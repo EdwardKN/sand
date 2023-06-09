@@ -200,6 +200,7 @@ class Player{
         this.weight = 0.1
         this.gravityV = 0;
         this.gravityClamp = 4;
+        this.onground = false;
     }
     draw(){
         c.fillStyle = "black"
@@ -214,10 +215,44 @@ class Player{
 
         this.gravityV = this.gravity(this.gravityV,this.gravityClamp)
 
+        this.checkCollisions();
+
         this.x += this.vx
+        if(this.onground){
+            this.gravityV = 0;
+
+            if(this.vy < 0){
+                this.vy = 0;
+            }
+            console.log("he")
+        }
         this.y += this.vy + this.gravityV
 
+
         
+    }
+    checkCollisions(){
+        let tmp = false;
+        for(let i = 0; i< this.w; i++){
+
+            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2))]){
+                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2))].type instanceof Fluid) == false){
+                    tmp = true;
+                } 
+            }
+        }
+        if(tmp || this.y <= -Math.floor(canvas.height/2) + this.h/2){
+            this.onground = true;
+            for(let i = 0; i< this.w; i++){
+                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2)-1)]){
+                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2)-1)].type instanceof Fluid) == false){
+                        this.y++;
+                    }
+                }
+            }
+        }else{
+            this.onground = false
+        }
     }
     updateVelocity(v,direction,speedloss,clamp,speedToSpeed){
         v+= speedToSpeed*direction;
@@ -253,6 +288,7 @@ class Player{
             v-=this.weight;
         }else{
             v = 0;
+            this.onground = true;
             this.y = -Math.floor(canvas.height/2) + this.h/2;
         }
         return v;
@@ -298,7 +334,7 @@ function createParticle(x, y, color, type) {
 }
 
 
-function render() {
+async function render() {
     for (let x = 0 - Math.floor(canvas.width/2) -Math.floor(player.x); x < canvas.width * 2-Math.floor(player.x); x++) {
         for (let y = 0 - Math.floor(canvas.height/2)-Math.floor(player.y); y < canvas.height * 2-Math.floor(player.y); y++) {
             if (particles[x + "," + y]) {
@@ -316,7 +352,7 @@ function render() {
     player.update();
 }
 
-function update() {
+async function update() {
     requestAnimationFrame(update);
     renderC.imageSmoothingEnabled = false;
 
@@ -330,5 +366,8 @@ function update() {
 }
 
 var player = new Player(0,0)
+
+async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
+
 
 update();
