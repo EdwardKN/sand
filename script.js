@@ -126,23 +126,19 @@ class Sand {
         this.particle = particle;
     }
     update() {
-        if (this.particle.y + 1 < canvas.height) {
-            if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
-                moveParticle(this.particle, 0, 1)
-            } else {
-                let random = Math.random() > 0.5 ? -1 : 1
+        if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
+            moveParticle(this.particle, 0, 1)
+        } else {
+            let random = Math.random() > 0.5 ? -1 : 1
 
-                if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] == undefined) {
+            if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] == undefined) {
+                moveParticle(this.particle, random, 0)
+            }
+            if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] !== undefined) {
+                if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)].type instanceof Fluid) {
                     moveParticle(this.particle, random, 0)
                 }
-                if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] !== undefined) {
-                    if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)].type instanceof Fluid) {
-                        moveParticle(this.particle, random, 0)
-                    }
-                }
             }
-
-
         }
     }
 }
@@ -162,22 +158,16 @@ class Fluid {
                 return
             }
         }
+        if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined) {
+            moveParticle(this.particle, 0, 1)
 
-        if (this.particle.y + 1 < canvas.height) {
-            if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined) {
-                moveParticle(this.particle, 0, 1)
+        } else {
+            let random = Math.random() > 0.5 ? -1 : 1
 
-            } else {
-                let random = Math.random() > 0.5 ? -1 : 1
-
-                if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
-                    moveParticle(this.particle, random, 0)
-                }
+            if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
+                moveParticle(this.particle, random, 0)
             }
-
-
         }
-
     }
 }
 
@@ -233,7 +223,7 @@ class Player{
                 } 
             }
         }
-        if(tmp || this.y <= -Math.floor(canvas.height/2) + this.h/2){
+        if(tmp){
             this.gravityV = 0;
             if(this.vy < 0){
                 this.vy = 0;
@@ -338,15 +328,8 @@ class Player{
         if(v < -clamp){
             v = -clamp;
         }
-        if(this.y > -Math.floor(canvas.height/2) + this.h/2){
-            v-=this.weight;
-        }else{
-            v = 0;
-            if(this.vy < 0){
-                this.vy = 0;
-            }            
-            this.y = -Math.floor(canvas.height/2) + this.h/2;
-        }
+        v-=this.weight;
+
         return v;
     }
 }
@@ -408,6 +391,17 @@ async function render() {
     player.update();
 }
 
+function testGenerate(){
+    for(let x = -500; x<500; x++){
+        for(let y = -500; y<500; y++){
+            let perlin = getPerlinNoise(x,y,20,100)
+            if(perlin > 0.5 || Math.abs(x) === 499 || Math.abs(y) === 499){
+                createParticle(x,y,"black","solid")
+            }
+        }
+    }
+}
+
 async function update() {
     requestAnimationFrame(update);
     renderC.imageSmoothingEnabled = false;
@@ -421,9 +415,21 @@ async function update() {
 
 }
 
+function getPerlinNoise(x,y,perlinSeed, resolution){
+    noise.seed(perlinSeed);
+
+    var value = noise.simplex2(x / resolution, y / resolution);
+    value++;
+    value /= 2;
+    
+    return value;
+
+}
+
 var player = new Player(0,0)
 
 async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 
+testGenerate()
 update();
