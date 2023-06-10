@@ -15,6 +15,8 @@ var currentTool = 0;
 
 var scale;
 
+const chunkSize = 32;
+
 var mouse = {
     x: 1000,
     y: 1000
@@ -64,6 +66,8 @@ renderCanvas.addEventListener("mousedown", function (e) {
     }else if(thisTool === 3){
         for (let i = 0; i < Math.pow(size, 2); i++) {
             particles[(mouse.x + i % size - Math.floor(size/2+player.x)) + "," + (mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y))] = undefined;
+            chunks[Math.floor((mouse.x + i % size - Math.floor(size/2+player.x))/chunkSize) + "," +Math.floor((mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y))/chunkSize)].context.clearRect((mouse.x + i % size - Math.floor(size/2+player.x))%chunkSize, (mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y))%chunkSize, 1, 1);
+
         }
     }
     
@@ -105,6 +109,8 @@ class Particle {
         this.x = x;
         this.y = y;
         this.color = color;
+        this.lastX = undefined;
+        this.lastY = undefined;
 
         if (this.color === undefined) {
             this.color = "black"
@@ -112,8 +118,18 @@ class Particle {
     }
 
     draw() {
-        c.fillStyle = this.color
-        c.fillRect(this.x + Math.floor(player.x), this.y + Math.floor(player.y), 1, 1);
+        if(chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)]){
+            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].context.fillStyle = this.color
+        }else{
+            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)] = {canvas:document.createElement("canvas")};
+            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].canvas.width = chunkSize;
+            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].canvas.height = chunkSize;
+            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].context = chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].canvas.getContext("2d")
+        }
+        let tmpX = this.x >= 0 ? this.x%chunkSize : chunkSize + this.x%chunkSize
+        let tmpY = this.y >= 0 ? this.y%chunkSize : chunkSize + this.y%chunkSize
+        chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].context.fillRect(tmpX, tmpY, 1, 1);
+
     }
 
     update() {
@@ -336,6 +352,8 @@ class Player{
 
 var particles = []
 
+var chunks = [];
+
 function moveParticle(particle, vx, vy) {
     let tmp = particles[(particle.x + vx) + "," + (particle.y + vy)]
 
@@ -343,16 +361,23 @@ function moveParticle(particle, vx, vy) {
     if (tmp) {
         tmp.x -= vx;
         tmp.y -= vy;
+        tmp.draw();
+    }else{
+        let tmpX = particle.x >= 0 ? particle.x%chunkSize : chunkSize + particle.x%chunkSize
+        let tmpY = particle.y >= 0 ? particle.y%chunkSize : chunkSize + particle.y%chunkSize
+        chunks[Math.floor(particle.x/chunkSize) + "," +Math.floor(particle.y/chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
     }
     particles[particle.x + "," + particle.y] = tmp;
 
     particle.y += vy;
     particle.x += vx;
+    particle.draw();
 }
 
 function createParticle(x, y, color, type) {
     if(type == "solid"){
         particles[x + "," + y] = new Particle(x, y, color)
+        particles[x + "," + y].draw();
     }else{
         if (particles[x + "," + y] === undefined) {
             particles[x + "," + y] = new Particle(x, y, color)
@@ -364,6 +389,7 @@ function createParticle(x, y, color, type) {
     
                 particles[x + "," + y].type = new Fluid(particles[x + "," + y])
             }
+            particles[x + "," + y].draw();
             
         } else {
             createParticle(x, y - 1, color, type)
@@ -374,20 +400,23 @@ function createParticle(x, y, color, type) {
 
 
 async function render() {
-    for (let x = 0 - Math.floor(canvas.width/2) -Math.floor(player.x); x < canvas.width * 2-Math.floor(player.x); x++) {
-        for (let y = 0 - Math.floor(canvas.height/2)-Math.floor(player.y); y < canvas.height * 2-Math.floor(player.y); y++) {
+    for (let x = 0 -Math.floor(player.x); x < canvas.width - player.x; x++) {
+        for (let y = 0 -Math.floor(player.y); y < canvas.height - player.y; y++) {
             if (particles[x + "," + y]) {
-                particles[x + "," + y].update();
+                if (particles[x + "," + y].type) {
+                    particles[x + "," + y].type.update();
+                }
             }
         }
     }
-    for (let x = 0-Math.floor(player.x); x < canvas.width-Math.floor(player.x); x++) {
-        for (let y = 0-Math.floor(player.y); y < canvas.height-Math.floor(player.y); y++) {
-            if (particles[x + "," + y]) {
-                particles[x + "," + y].draw();
+    for(let x = -Math.round(player.x/chunkSize) - 1; x<Math.round(canvas.width/chunkSize) -Math.round(player.x/chunkSize) + 1; x++){
+        for(let y = -Math.round(player.y/chunkSize) - 1; y<Math.round(canvas.height/chunkSize) -Math.round(player.y/chunkSize) + 1; y++){
+            if(chunks[x+","+y]){
+                c.drawImage(chunks[x+","+y].canvas,x*chunkSize +Math.floor(player.x),y*chunkSize + Math.floor(player.y))
             }
         }
     }
+
     player.update();
 }
 
@@ -407,11 +436,15 @@ async function update() {
     renderC.imageSmoothingEnabled = false;
 
     c.clearRect(0, 0, canvas.width, canvas.height);
+    
 
     render();
     renderC.fillStyle = "white"
     renderC.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
     renderC.drawImage(canvas, 0, 0, renderCanvas.width, renderCanvas.height)
+
+    renderC.fillStyle = "gray"
+    renderC.fillText(fps,100,100)
 
 }
 
@@ -433,3 +466,21 @@ async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)
 
 testGenerate()
 update();
+
+
+var times = [];
+var fps;
+
+function refreshLoop() {
+  window.requestAnimationFrame(function() {
+    const now = performance.now();
+    while (times.length > 0 && times[0] <= now - 1000) {
+      times.shift();
+    }
+    times.push(now);
+    fps = times.length;
+    refreshLoop();
+  });
+}
+
+refreshLoop();
