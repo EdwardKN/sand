@@ -200,7 +200,6 @@ class Player{
         this.weight = 0.1
         this.gravityV = 0;
         this.gravityClamp = 4;
-        this.onground = false;
     }
     draw(){
         c.fillStyle = "black"
@@ -218,23 +217,16 @@ class Player{
         this.checkCollisions();
 
         this.x += this.vx
-        if(this.onground){
-            this.gravityV = 0;
 
-            if(this.vy < 0){
-                this.vy = 0;
-            }
-            console.log("he")
-        }
         this.y += this.vy + this.gravityV
 
 
         
     }
+
     checkCollisions(){
         let tmp = false;
         for(let i = 0; i< this.w; i++){
-
             if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2))]){
                 if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2))].type instanceof Fluid) == false){
                     tmp = true;
@@ -242,7 +234,10 @@ class Player{
             }
         }
         if(tmp || this.y <= -Math.floor(canvas.height/2) + this.h/2){
-            this.onground = true;
+            this.gravityV = 0;
+            if(this.vy < 0){
+                this.vy = 0;
+            }
             for(let i = 0; i< this.w; i++){
                 if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2)-1)]){
                     if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2)-1)].type instanceof Fluid) == false){
@@ -250,8 +245,67 @@ class Player{
                     }
                 }
             }
-        }else{
-            this.onground = false
+        }
+        let tmp2 = false;
+        for(let i = 0; i< this.w; i++){
+
+            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2 - 1))]){
+                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2 - 1))].type instanceof Fluid) == false){
+                    tmp2 = true;
+                } 
+            }
+        }
+        if(tmp2){
+            if(this.directionY == 1){
+                this.vy = -this.gravityV;
+            }
+            for(let i = 0; i< this.w; i++){
+                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2))]){
+                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2))].type instanceof Fluid) == false){
+                        this.y--;
+                    }
+                }
+            }
+        }
+        let tmp3 = false;
+        for(let i = 0; i< this.h; i++){
+            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
+                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+                    tmp3 = true;
+                } 
+            }
+        }
+        if(tmp3){
+            if(this.directionX == 1){
+                this.vx = 0
+            }
+            for(let i = 0; i< this.w; i++){
+                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
+                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+                        this.x--;
+                    }
+                }
+            }
+        }
+        let tmp4 = false;
+        for(let i = 0; i< this.h; i++){
+            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
+                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+                    tmp4 = true;
+                } 
+            }
+        }
+        if(tmp4){
+            if(this.directionX == -1){
+                this.vx = 0
+            }
+            for(let i = 0; i< this.w; i++){
+                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
+                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+                        this.x++;
+                    }
+                }
+            }
         }
     }
     updateVelocity(v,direction,speedloss,clamp,speedToSpeed){
@@ -288,7 +342,9 @@ class Player{
             v-=this.weight;
         }else{
             v = 0;
-            this.onground = true;
+            if(this.vy < 0){
+                this.vy = 0;
+            }            
             this.y = -Math.floor(canvas.height/2) + this.h/2;
         }
         return v;
