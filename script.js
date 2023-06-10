@@ -400,17 +400,13 @@ function createParticle(x, y, color, type) {
 
 
 async function render() {
-    for (let x = 0 -Math.floor(player.x); x < canvas.width - player.x; x++) {
-        for (let y = 0 -Math.floor(player.y); y < canvas.height - player.y; y++) {
-            if (particles[x + "," + y]) {
-                if (particles[x + "," + y].type) {
-                    particles[x + "," + y].type.update();
-                }
-            }
+    for (let x = 0 -Math.floor(player.x)- canvas.width/2, n = canvas.width - player.x + canvas.width; x < n; x++) {
+        for (let y = 0 -Math.floor(player.y) - canvas.height / 2,g = canvas.height - player.y + canvas.height; y < g; y++) {
+            //particles[x + "," + y]?.type?.update();
         }
     }
-    for(let x = -Math.round(player.x/chunkSize) - 1; x<Math.round(canvas.width/chunkSize) -Math.round(player.x/chunkSize) + 1; x++){
-        for(let y = -Math.round(player.y/chunkSize) - 1; y<Math.round(canvas.height/chunkSize) -Math.round(player.y/chunkSize) + 1; y++){
+    for(let x = -Math.round(player.x/chunkSize) - 1, n = Math.round(canvas.width/chunkSize) -Math.round(player.x/chunkSize) + 1; x<n; x++){
+        for(let y = -Math.round(player.y/chunkSize) - 1, g = Math.round(canvas.height/chunkSize) -Math.round(player.y/chunkSize) + 1; y<g; y++){
             if(chunks[x+","+y]){
                 c.drawImage(chunks[x+","+y].canvas,x*chunkSize +Math.floor(player.x),y*chunkSize + Math.floor(player.y))
             }
