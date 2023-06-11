@@ -24,7 +24,6 @@ var mouse = {
 
 let typetocreate = "sand"
 
-window.onload = fixCanvas;
 
 function fixCanvas() {
     if (window.innerWidth * 9 > window.innerHeight * 16) {
@@ -40,6 +39,31 @@ function fixCanvas() {
     }
 }
 
+var spritesheet;
+var spritesheetImage;
+
+var images = {
+    stone: {
+        src: "stone"
+    }
+}
+
+async function loadSpriteSheet() {
+    var response = await fetch("./images/texture.json")
+    spritesheet = await response.json();
+    spritesheetImage = new Image();
+    spritesheetImage.src = "./images/texture.png";
+}
+
+async function preRender(imageObject) {
+    await loadSpriteSheet();
+    Object.entries(imageObject).forEach(image => {
+        let src = (image[1].src.split("/"))
+        let src3 = "images/" + src
+        image[1].sprite = spritesheet.frames[spritesheet.frames.map(function (e) { return e.filename; }).indexOf(src3 + ".png")]
+    });
+}
+
 renderCanvas.addEventListener("wheel", (e) => {
     currentTool += (Math.sign(e.deltaY))
 });
@@ -53,15 +77,15 @@ renderCanvas.addEventListener("mousedown", function (e) {
     let thisTool = Math.abs(currentTool) % 4;
     if (thisTool === 0) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "#c2b280", "sand")
+            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "sand", "#c2b280")
         }
     } else if (thisTool === 1) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "#c2b280", "fluid")
+            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "fluid", "#c2b280")
         }
     } else if (thisTool === 2) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "gray", "solid")
+            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "solid", "gray")
         }
     } else if (thisTool === 3) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
@@ -114,18 +138,23 @@ window.addEventListener("keyup", e => {
 
 window.onresize = fixCanvas;
 
+async function drawImageFromSpriteSheet(image, x, y, w, h, cropX, cropY, cropW, cropH, context) {
+    context.drawImage(spritesheetImage, image.sprite.frame.x + cropX, image.sprite.frame.y + cropY, cropW, cropH, x, y, w, h)
+}
+
 class Particle {
-    constructor(x, y, color) {
+    constructor(x, y, color, texture) {
         this.x = x;
         this.y = y;
         this.color = color;
+        this.texture = texture;
 
         if (this.color === undefined) {
             this.color = "black"
         }
     }
 
-    draw() {
+    async draw() {
         if (!chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)]) {
             chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)] = { canvas: document.createElement("canvas") };
             chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].canvas.width = chunkSize;
@@ -136,9 +165,18 @@ class Particle {
         let tmpY = this.y >= 0 ? this.y % chunkSize : (chunkSize + this.y % (chunkSize))
         tmpX = tmpX == chunkSize ? 0 : tmpX
         tmpY = tmpY == chunkSize ? 0 : tmpY
-
         chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context.fillStyle = this.color;
         chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context.fillRect(tmpX, tmpY, 1, 1);
+        if (this.texture) {
+            await sleep(1)
+            let tmpFrameX = this.x >= 0 ? this.x % this.texture.sprite.frame.w : (this.texture.sprite.frame.w + this.x % (this.texture.sprite.frame.w))
+            tmpFrameX = tmpFrameX == this.texture.sprite.frame.w ? 0 : tmpFrameX
+            let tmpFrameY = this.y >= 0 ? this.y % this.texture.sprite.frame.h : (this.texture.sprite.frame.h + this.y % (this.texture.sprite.frame.h))
+            tmpFrameY = tmpFrameY == this.texture.sprite.frame.h ? 0 : tmpFrameY
+            await drawImageFromSpriteSheet(this.texture, tmpX, tmpY, 1, 1, tmpFrameX, tmpFrameY, 1, 1, chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context)
+        } else {
+
+        }
 
 
     }
@@ -147,17 +185,22 @@ class Particle {
         await this.type?.update();
     }
 
-    async updateNearby(vy) {
+    async updateNearby(vx, vy) {
         let self = this;
         if (self?.type instanceof Fluid && vy == 0) {
             await sleep(1)
             await self.update()
         } else {
 
-            for (let x = self.x - 4; x < self.x + 5; x++) {
-                await sleep(1)
-
-                for (let y = self.y - 4; y < self.y + 5; y++) {
+            for (let x = self.x - 1; x < self.x + 2; x++) {
+                for (let y = self.y - 1; y < self.y + 2; y++) {
+                    await sleep(1)
+                    await particles[(x) + "," + (y)]?.update();
+                }
+            }
+            for (let x = self.x - 1 - vx; x < self.x + 2 - vx; x++) {
+                for (let y = self.y - 1 - vy; y < self.y + 2 - vy; y++) {
+                    await sleep(1)
                     await particles[(x) + "," + (y)]?.update();
                 }
             }
@@ -169,12 +212,11 @@ class Particle {
 
         if (tmp) {
             if (tmp.type == undefined) {
-                //this.updateNearby();
                 return;
             } else {
                 tmp.x -= vx;
                 tmp.y -= vy;
-                tmp.draw();
+                await tmp.draw();
             }
         } else {
             let tmpX = this.x >= 0 ? this.x % chunkSize : (chunkSize + this.x % (chunkSize))
@@ -189,9 +231,10 @@ class Particle {
 
         this.y += vy;
         this.x += vx;
-        this.draw();
+        await this.draw();
+        await sleep(1000 / frames)
         let self = this;
-        await self.updateNearby(vy)
+        await self.updateNearby(vx, vy)
     }
 };
 
@@ -423,13 +466,13 @@ var particles = []
 
 var chunks = [];
 
-function createParticle(x, y, color, type) {
+function createParticle(x, y, type, color, texture) {
     if (type == "solid") {
-        particles[x + "," + y] = new Particle(x, y, color)
+        particles[x + "," + y] = new Particle(x, y, color, texture)
         particles[x + "," + y].draw();
     } else {
         if (particles[x + "," + y] === undefined) {
-            particles[x + "," + y] = new Particle(x, y, color)
+            particles[x + "," + y] = new Particle(x, y, color, texture)
             if (type == "sand") {
                 particles[x + "," + y].type = new Sand(particles[x + "," + y])
             }
@@ -442,7 +485,7 @@ function createParticle(x, y, color, type) {
             particles[x + "," + y].update();
 
         } else {
-            createParticle(x, y - 1, color, type)
+            createParticle(x, y - 1, type, color, texture)
         }
     }
 
@@ -471,7 +514,7 @@ function testGenerate() {
         for (let y = -500; y < 500; y++) {
             let perlin = getPerlinNoise(x, y, 20, 100)
             if (perlin > 0.5 || Math.abs(x) === 499 || Math.abs(y) === 499) {
-                createParticle(x, y, "brown", "solid")
+                createParticle(x, y, "solid", "brown")
             }
         }
     }
@@ -485,12 +528,14 @@ async function update() {
 
 
     render();
+
     renderC.fillStyle = "white"
     renderC.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
     renderC.drawImage(canvas, 0, 0, renderCanvas.width, renderCanvas.height)
 
     renderC.fillStyle = "gray"
     renderC.fillText(fps, 100, 100)
+
 
 }
 
@@ -510,8 +555,6 @@ var player = new Player(0, 0)
 async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 
-testGenerate()
-update();
 
 
 var times = [];
@@ -529,4 +572,24 @@ function refreshLoop() {
     });
 }
 
-refreshLoop();
+
+
+async function init() {
+    console.log("fix")
+    fixCanvas();
+    console.log("refresh")
+    refreshLoop();
+    console.log("sprite")
+    loadSpriteSheet();
+    console.log("prerender")
+    await preRender(images);
+    console.log("update")
+    update();
+    console.log("generate")
+    testGenerate()
+
+}
+
+window.onload = init;
+
+
