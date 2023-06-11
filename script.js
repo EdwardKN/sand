@@ -42,62 +42,72 @@ function fixCanvas() {
 
 renderCanvas.addEventListener("wheel", (e) => {
     currentTool += (Math.sign(e.deltaY))
-  });
+});
 
 renderCanvas.addEventListener("mousedown", function (e) {
     mouse = {
         x: Math.floor(e.offsetX / scale),
         y: Math.floor(e.offsetY / scale)
     }
-    let size = 10/2;
-    let thisTool = Math.abs(currentTool)%4;
-    if(thisTool === 0){
+    let size = 10;
+    let thisTool = Math.abs(currentTool) % 4;
+    if (thisTool === 0) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size/2 +player.x), mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y), "#c2b280", "sand")
+            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "#c2b280", "sand")
         }
-    }else if(thisTool === 1){
+    } else if (thisTool === 1) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size/2+player.x), mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y), "#c2b280", "fluid")
+            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "#c2b280", "fluid")
         }
-    }else if(thisTool === 2){
+    } else if (thisTool === 2) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size/2+player.x), mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y), "gray","solid")
+            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "gray", "solid")
         }
-    }else if(thisTool === 3){
+    } else if (thisTool === 3) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            particles[(mouse.x + i % size - Math.floor(size/2+player.x)) + "," + (mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y))] = undefined;
-            chunks[Math.floor((mouse.x + i % size - Math.floor(size/2+player.x))/chunkSize) + "," +Math.floor((mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y))/chunkSize)].context.clearRect((mouse.x + i % size - Math.floor(size/2+player.x))%chunkSize, (mouse.y + Math.floor(i / size) - Math.floor(size/2+player.y))%chunkSize, 1, 1);
-
+            let x = (mouse.x + i % size - Math.floor(size / 2 + player.x))
+            let y = (mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y))
+            particles[x + "," + y] = undefined;
+            let tmpX = x >= 0 ? x % chunkSize : (chunkSize + x % (chunkSize))
+            let tmpY = y >= 0 ? y % chunkSize : (chunkSize + y % (chunkSize))
+            tmpX = tmpX == chunkSize ? 0 : tmpX
+            tmpY = tmpY == chunkSize ? 0 : tmpY
+            chunks[Math.floor(x / chunkSize) + "," + Math.floor(y / chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
+            for (let x2 = x - 2; x2 < x + 2; x2++) {
+                for (let y2 = y - 2; y2 < y + 2; y2++) {
+                    particles[(x2) + "," + (y2)]?.type?.update();
+                }
+            }
         }
     }
-    
+
 })
 
-window.addEventListener("keydown",e => {
-    if(e.code === "KeyD" && player.directionX == 0){
+window.addEventListener("keydown", e => {
+    if (e.code === "KeyD" && player.directionX == 0) {
         player.directionX = -1;
     }
-    if(e.code === "KeyA" && player.directionX == 0){
+    if (e.code === "KeyA" && player.directionX == 0) {
         player.directionX = 1;
     }
-    if(e.code === "KeyW" && player.directionY == 0){
+    if (e.code === "KeyW" && player.directionY == 0) {
         player.directionY = 1;
     }
-    if(e.code === "KeyS" && player.directionY == 0){
+    if (e.code === "KeyS" && player.directionY == 0) {
         player.directionY = -1;
     }
 })
-window.addEventListener("keyup",e => {
-    if(e.code === "KeyD" && player.directionX  == -1){
+window.addEventListener("keyup", e => {
+    if (e.code === "KeyD" && player.directionX == -1) {
         player.directionX = 0;
     }
-    if(e.code === "KeyA" && player.directionX  == 1){
+    if (e.code === "KeyA" && player.directionX == 1) {
         player.directionX = 0;
     }
-    if(e.code === "KeyW" && player.directionY == 1){
+    if (e.code === "KeyW" && player.directionY == 1) {
         player.directionY = 0;
     }
-    if(e.code === "KeyS" && player.directionY == -1){
+    if (e.code === "KeyS" && player.directionY == -1) {
         player.directionY = 0;
     }
 })
@@ -109,8 +119,6 @@ class Particle {
         this.x = x;
         this.y = y;
         this.color = color;
-        this.lastX = undefined;
-        this.lastY = undefined;
 
         if (this.color === undefined) {
             this.color = "black"
@@ -118,22 +126,72 @@ class Particle {
     }
 
     draw() {
-        if(chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)]){
-            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].context.fillStyle = this.color
-        }else{
-            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)] = {canvas:document.createElement("canvas")};
-            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].canvas.width = chunkSize;
-            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].canvas.height = chunkSize;
-            chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].context = chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].canvas.getContext("2d")
+        if (!chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)]) {
+            chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)] = { canvas: document.createElement("canvas") };
+            chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].canvas.width = chunkSize;
+            chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].canvas.height = chunkSize;
+            chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context = chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].canvas.getContext("2d")
         }
-        let tmpX = this.x >= 0 ? this.x%chunkSize : chunkSize + this.x%chunkSize
-        let tmpY = this.y >= 0 ? this.y%chunkSize : chunkSize + this.y%chunkSize
-        chunks[Math.floor(this.x/chunkSize) + "," +Math.floor(this.y/chunkSize)].context.fillRect(tmpX, tmpY, 1, 1);
+        let tmpX = this.x >= 0 ? this.x % chunkSize : (chunkSize + this.x % (chunkSize))
+        let tmpY = this.y >= 0 ? this.y % chunkSize : (chunkSize + this.y % (chunkSize))
+        tmpX = tmpX == chunkSize ? 0 : tmpX
+        tmpY = tmpY == chunkSize ? 0 : tmpY
+
+        chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context.fillStyle = this.color;
+        chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context.fillRect(tmpX, tmpY, 1, 1);
+
 
     }
 
-    update() {
-        this.type?.update();
+    async update() {
+        await this.type?.update();
+    }
+
+    async updateNearby(vy) {
+        let self = this;
+        if (self?.type instanceof Fluid && vy == 0) {
+            await sleep(1)
+            await self.update()
+        } else {
+
+            for (let x = self.x - 4; x < self.x + 5; x++) {
+                await sleep(1)
+
+                for (let y = self.y - 4; y < self.y + 5; y++) {
+                    await particles[(x) + "," + (y)]?.update();
+                }
+            }
+        }
+    }
+
+    async move(vx, vy) {
+        let tmp = particles[(this.x + vx) + "," + (this.y + vy)]
+
+        if (tmp) {
+            if (tmp.type == undefined) {
+                //this.updateNearby();
+                return;
+            } else {
+                tmp.x -= vx;
+                tmp.y -= vy;
+                tmp.draw();
+            }
+        } else {
+            let tmpX = this.x >= 0 ? this.x % chunkSize : (chunkSize + this.x % (chunkSize))
+            let tmpY = this.y >= 0 ? this.y % chunkSize : (chunkSize + this.y % (chunkSize))
+            tmpX = tmpX == chunkSize ? 0 : tmpX
+            tmpY = tmpY == chunkSize ? 0 : tmpY
+            chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
+        }
+        particles[(this.x + vx) + "," + (this.y + vy)] = this;
+
+        particles[this.x + "," + this.y] = tmp;
+
+        this.y += vy;
+        this.x += vx;
+        this.draw();
+        let self = this;
+        await self.updateNearby(vy)
     }
 };
 
@@ -141,54 +199,65 @@ class Sand {
     constructor(particle) {
         this.particle = particle;
     }
-    update() {
+    async update() {
+
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
-            moveParticle(this.particle, 0, 1)
+            this.particle.move(0, 1)
+            return
         } else {
             let random = Math.random() > 0.5 ? -1 : 1
 
             if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] == undefined) {
-                moveParticle(this.particle, random, 0)
+                this.particle.move(random, 0)
+            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y + 1)] == undefined) {
+                this.particle.move(-random, 0)
             }
-            if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] !== undefined) {
-                if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)].type instanceof Fluid) {
-                    moveParticle(this.particle, random, 0)
-                }
+            if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)]?.type instanceof Fluid) {
+                this.particle.move(random, 0)
+            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y + 1)]?.type instanceof Fluid) {
+                this.particle.move(-random, 0)
             }
+
         }
     }
+
 }
 
 class Fluid {
     constructor(particle) {
         this.particle = particle;
     }
-    update() {
+    async update() {
         if (particles[this.particle.x + "," + (this.particle.y - 1)]) {
             if (particles[this.particle.x + "," + (this.particle.y - 1)].type instanceof Sand) {
                 let random = Math.random() > 0.5 ? -1 : 1
 
                 if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
-                    moveParticle(this.particle, random, 0)
+                    this.particle.move(random, 0)
+                } else if (particles[(this.particle.x + -random) + "," + (this.particle.y)] == undefined) {
+                    this.particle.move(-random, 0)
                 }
                 return
             }
         }
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined) {
-            moveParticle(this.particle, 0, 1)
+            this.particle.move(0, 1)
+            return;
 
         } else {
             let random = Math.random() > 0.5 ? -1 : 1
 
             if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
-                moveParticle(this.particle, random, 0)
+                this.particle.move(random, 0)
+            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y)] == undefined) {
+                this.particle.move(-random, 0)
             }
         }
     }
 }
 
-class Player{
-    constructor(x,y){
+class Player {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
         this.vx = 0;
@@ -201,24 +270,24 @@ class Player{
         this.clampY = 7;
         this.speedToSpeedX = 1;
         this.speedToSpeedY = 1;
-        this.w =5
+        this.w = 5
         this.h = 10;
         this.weight = 0.1
         this.gravityV = 0;
         this.gravityClamp = 4;
     }
-    draw(){
+    draw() {
         c.fillStyle = "black"
-        c.fillRect(Math.floor(canvas.width/2 - this.w/2),Math.floor(canvas.height/2 - this.h/2),this.w,this.h)
+        c.fillRect(Math.floor(canvas.width / 2 - this.w / 2), Math.floor(canvas.height / 2 - this.h / 2), this.w, this.h)
     }
-    update(){
+    update() {
         this.draw()
-        
 
-        this.vx =this.updateVelocity(this.vx,this.directionX,this.speedLossX,this.clampX,this.speedToSpeedX)
-        this.vy =this.updateVelocity(this.vy,this.directionY,this.speedLossY,this.clampY,this.speedToSpeedY)
 
-        this.gravityV = this.gravity(this.gravityV,this.gravityClamp)
+        this.vx = this.updateVelocity(this.vx, this.directionX, this.speedLossX, this.clampX, this.speedToSpeedX)
+        this.vy = this.updateVelocity(this.vy, this.directionY, this.speedLossY, this.clampY, this.speedToSpeedY)
+
+        this.gravityV = this.gravity(this.gravityV, this.gravityClamp)
 
         this.checkCollisions();
 
@@ -227,124 +296,124 @@ class Player{
         this.y += this.vy + this.gravityV
 
 
-        
+
     }
 
-    checkCollisions(){
+    checkCollisions() {
         let tmp = false;
-        for(let i = 0; i< this.w; i++){
-            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2))]){
-                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2))].type instanceof Fluid) == false){
+        for (let i = 0; i < this.w; i++) {
+            if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2))]) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2))].type instanceof Fluid) == false) {
                     tmp = true;
-                } 
+                }
             }
         }
-        if(tmp){
+        if (tmp) {
             this.gravityV = 0;
-            if(this.vy < 0){
+            if (this.vy < 0) {
                 this.vy = 0;
             }
-            for(let i = 0; i< this.w; i++){
-                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2)-1)]){
-                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 + this.h/2)-1)].type instanceof Fluid) == false){
+            for (let i = 0; i < this.w; i++) {
+                if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2) - 1)]) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2) - 1)].type instanceof Fluid) == false) {
                         this.y++;
                     }
                 }
             }
         }
         let tmp2 = false;
-        for(let i = 0; i< this.w; i++){
+        for (let i = 0; i < this.w; i++) {
 
-            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2 - 1))]){
-                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2 - 1))].type instanceof Fluid) == false){
+            if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2 - 1))]) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2 - 1))].type instanceof Fluid) == false) {
                     tmp2 = true;
-                } 
+                }
             }
         }
-        if(tmp2){
-            if(this.directionY == 1){
+        if (tmp2) {
+            if (this.directionY == 1) {
                 this.vy = -this.gravityV;
             }
-            for(let i = 0; i< this.w; i++){
-                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2))]){
-                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2) + i))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2))].type instanceof Fluid) == false){
+            for (let i = 0; i < this.w; i++) {
+                if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2))]) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2))].type instanceof Fluid) == false) {
                         this.y--;
                     }
                 }
             }
         }
         let tmp3 = false;
-        for(let i = 0; i< this.h; i++){
-            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
-                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+        for (let i = 0; i < this.h; i++) {
+            if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                     tmp3 = true;
-                } 
+                }
             }
         }
-        if(tmp3){
-            if(this.directionX == 1){
+        if (tmp3) {
+            if (this.directionX == 1) {
                 this.vx = 0
             }
-            for(let i = 0; i< this.w; i++){
-                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
-                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 - this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+            for (let i = 0; i < this.w; i++) {
+                if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                         this.x--;
                     }
                 }
             }
         }
         let tmp4 = false;
-        for(let i = 0; i< this.h; i++){
-            if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
-                if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+        for (let i = 0; i < this.h; i++) {
+            if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                     tmp4 = true;
-                } 
+                }
             }
         }
-        if(tmp4){
-            if(this.directionX == -1){
+        if (tmp4) {
+            if (this.directionX == -1) {
                 this.vx = 0
             }
-            for(let i = 0; i< this.w; i++){
-                if(particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)]){
-                    if((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width/2 + this.w/2 - 1)))+","+(-Math.floor(this.y)+ Math.floor(canvas.height/2 - this.h/2)+ i)].type instanceof Fluid) == false){
+            for (let i = 0; i < this.w; i++) {
+                if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                         this.x++;
                     }
                 }
             }
         }
     }
-    updateVelocity(v,direction,speedloss,clamp,speedToSpeed){
-        v+= speedToSpeed*direction;
-        if(v > clamp){
+    updateVelocity(v, direction, speedloss, clamp, speedToSpeed) {
+        v += speedToSpeed * direction;
+        if (v > clamp) {
             v = clamp;
         }
-        if(v < -clamp){
+        if (v < -clamp) {
             v = -clamp;
         }
-        if(v > 0){
+        if (v > 0) {
             v -= speedloss
-            if(v < 0){
+            if (v < 0) {
                 v = 0;
             }
-        }else if(v < 0){
+        } else if (v < 0) {
             v += speedloss
-            if(v > 0){
+            if (v > 0) {
                 v = 0;
             }
         }
-        
+
         return v
 
     }
-    gravity(v,clamp){
-        if(v > clamp){
+    gravity(v, clamp) {
+        if (v > clamp) {
             v = clamp;
         }
-        if(v < -clamp){
+        if (v < -clamp) {
             v = -clamp;
         }
-        v-=this.weight;
+        v -= this.weight;
 
         return v;
     }
@@ -354,31 +423,11 @@ var particles = []
 
 var chunks = [];
 
-function moveParticle(particle, vx, vy) {
-    let tmp = particles[(particle.x + vx) + "," + (particle.y + vy)]
-
-    particles[(particle.x + vx) + "," + (particle.y + vy)] = particle;
-    if (tmp) {
-        tmp.x -= vx;
-        tmp.y -= vy;
-        tmp.draw();
-    }else{
-        let tmpX = particle.x >= 0 ? particle.x%chunkSize : chunkSize + particle.x%chunkSize
-        let tmpY = particle.y >= 0 ? particle.y%chunkSize : chunkSize + particle.y%chunkSize
-        chunks[Math.floor(particle.x/chunkSize) + "," +Math.floor(particle.y/chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
-    }
-    particles[particle.x + "," + particle.y] = tmp;
-
-    particle.y += vy;
-    particle.x += vx;
-    particle.draw();
-}
-
 function createParticle(x, y, color, type) {
-    if(type == "solid"){
+    if (type == "solid") {
         particles[x + "," + y] = new Particle(x, y, color)
         particles[x + "," + y].draw();
-    }else{
+    } else {
         if (particles[x + "," + y] === undefined) {
             particles[x + "," + y] = new Particle(x, y, color)
             if (type == "sand") {
@@ -386,29 +435,30 @@ function createParticle(x, y, color, type) {
             }
             if (type == "fluid") {
                 particles[x + "," + y].color = "#2389da"
-    
+
                 particles[x + "," + y].type = new Fluid(particles[x + "," + y])
             }
             particles[x + "," + y].draw();
-            
+            particles[x + "," + y].update();
+
         } else {
             createParticle(x, y - 1, color, type)
         }
     }
-    
+
 }
 
 
 async function render() {
-    for (let x = 0 -Math.floor(player.x)- canvas.width/2, n = canvas.width - player.x + canvas.width; x < n; x++) {
-        for (let y = 0 -Math.floor(player.y) - canvas.height / 2,g = canvas.height - player.y + canvas.height; y < g; y++) {
+    for (let x = 0 - Math.floor(player.x) - canvas.width / 2, n = canvas.width - player.x + canvas.width; x < n; x++) {
+        for (let y = 0 - Math.floor(player.y) - canvas.height / 2, g = canvas.height - player.y + canvas.height; y < g; y++) {
             //particles[x + "," + y]?.type?.update();
         }
     }
-    for(let x = -Math.round(player.x/chunkSize) - 1, n = Math.round(canvas.width/chunkSize) -Math.round(player.x/chunkSize) + 1; x<n; x++){
-        for(let y = -Math.round(player.y/chunkSize) - 1, g = Math.round(canvas.height/chunkSize) -Math.round(player.y/chunkSize) + 1; y<g; y++){
-            if(chunks[x+","+y]){
-                c.drawImage(chunks[x+","+y].canvas,x*chunkSize +Math.floor(player.x),y*chunkSize + Math.floor(player.y))
+    for (let x = -Math.round(player.x / chunkSize) - 1, n = Math.round(canvas.width / chunkSize) - Math.round(player.x / chunkSize) + 1; x < n; x++) {
+        for (let y = -Math.round(player.y / chunkSize) - 1, g = Math.round(canvas.height / chunkSize) - Math.round(player.y / chunkSize) + 1; y < g; y++) {
+            if (chunks[x + "," + y]) {
+                c.drawImage(chunks[x + "," + y].canvas, x * chunkSize + Math.floor(player.x), y * chunkSize + Math.floor(player.y))
             }
         }
     }
@@ -416,12 +466,12 @@ async function render() {
     player.update();
 }
 
-function testGenerate(){
-    for(let x = -500; x<500; x++){
-        for(let y = -500; y<500; y++){
-            let perlin = getPerlinNoise(x,y,20,100)
-            if(perlin > 0.5 || Math.abs(x) === 499 || Math.abs(y) === 499){
-                createParticle(x,y,"black","solid")
+function testGenerate() {
+    for (let x = -500; x < 500; x++) {
+        for (let y = -500; y < 500; y++) {
+            let perlin = getPerlinNoise(x, y, 20, 100)
+            if (perlin > 0.5 || Math.abs(x) === 499 || Math.abs(y) === 499) {
+                createParticle(x, y, "brown", "solid")
             }
         }
     }
@@ -432,7 +482,7 @@ async function update() {
     renderC.imageSmoothingEnabled = false;
 
     c.clearRect(0, 0, canvas.width, canvas.height);
-    
+
 
     render();
     renderC.fillStyle = "white"
@@ -440,22 +490,22 @@ async function update() {
     renderC.drawImage(canvas, 0, 0, renderCanvas.width, renderCanvas.height)
 
     renderC.fillStyle = "gray"
-    renderC.fillText(fps,100,100)
+    renderC.fillText(fps, 100, 100)
 
 }
 
-function getPerlinNoise(x,y,perlinSeed, resolution){
+function getPerlinNoise(x, y, perlinSeed, resolution) {
     noise.seed(perlinSeed);
 
     var value = noise.simplex2(x / resolution, y / resolution);
     value++;
     value /= 2;
-    
+
     return value;
 
 }
 
-var player = new Player(0,0)
+var player = new Player(0, 0)
 
 async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
@@ -468,15 +518,15 @@ var times = [];
 var fps;
 
 function refreshLoop() {
-  window.requestAnimationFrame(function() {
-    const now = performance.now();
-    while (times.length > 0 && times[0] <= now - 1000) {
-      times.shift();
-    }
-    times.push(now);
-    fps = times.length;
-    refreshLoop();
-  });
+    window.requestAnimationFrame(function () {
+        const now = performance.now();
+        while (times.length > 0 && times[0] <= now - 1000) {
+            times.shift();
+        }
+        times.push(now);
+        fps = times.length;
+        refreshLoop();
+    });
 }
 
 refreshLoop();
