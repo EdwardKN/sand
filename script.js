@@ -182,26 +182,26 @@ class Particle {
     }
 
     async update() {
-        await this.type?.update();
+        this.type?.update();
     }
 
     async updateNearby(vx, vy) {
         let self = this;
         if (self?.type instanceof Fluid && vy == 0) {
             await sleep(1)
-            await self.update()
+            self.update()
         } else {
 
             for (let x = self.x - 2; x < self.x + 3; x++) {
-                for (let y = self.y - 3; y < self.y + 4; y++) {
+                for (let y = self.y - 2; y < self.y + 3; y++) {
                     await sleep(1)
-                    await particles[(x) + "," + (y)]?.update();
+                    particles[(x) + "," + (y)]?.update();
                 }
             }
             for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
-                for (let y = self.y - 3 - vy; y < self.y + 4 - vy; y++) {
+                for (let y = self.y - 2 - vy; y < self.y + 3 - vy; y++) {
                     await sleep(1)
-                    await particles[(x) + "," + (y)]?.update();
+                    particles[(x) + "," + (y)]?.update();
                 }
             }
         }
@@ -209,14 +209,13 @@ class Particle {
 
     async move(vx, vy) {
         let tmp = particles[(this.x + vx) + "," + (this.y + vy)]
-
         if (tmp) {
             if (tmp.type == undefined) {
                 return;
             } else {
                 tmp.x -= vx;
                 tmp.y -= vy;
-                await tmp.draw();
+                tmp.draw();
             }
         } else {
             let tmpX = this.x >= 0 ? this.x % chunkSize : (chunkSize + this.x % (chunkSize))
@@ -234,9 +233,9 @@ class Particle {
         }
         this.y += vy;
         this.x += vx;
-        await this.draw();
+        this.draw();
         let self = this;
-        await self.updateNearby(vx, vy)
+        self.updateNearby(vx, vy)
     }
 };
 
@@ -575,17 +574,11 @@ function refreshLoop() {
 
 
 async function init() {
-    console.log("fix")
     fixCanvas();
-    console.log("refresh")
     refreshLoop();
-    console.log("sprite")
     loadSpriteSheet();
-    console.log("prerender")
     await preRender(images);
-    console.log("update")
     update();
-    console.log("generate")
     testGenerate()
 
 }
