@@ -188,19 +188,19 @@ class Particle {
     async updateNearby(vx, vy) {
         let self = this;
         if (self?.type instanceof Fluid && vy == 0) {
-            await sleep(1)
+            //await sleep(1)
             self.update()
         } else {
 
             for (let x = self.x - 2; x < self.x + 3; x++) {
                 for (let y = self.y - 2; y < self.y + 3; y++) {
-                    await sleep(1)
+                    //await sleep(1)
                     particles[(x) + "," + (y)]?.update();
                 }
             }
             for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
                 for (let y = self.y - 2 - vy; y < self.y + 3 - vy; y++) {
-                    await sleep(1)
+                    //await sleep(1)
                     particles[(x) + "," + (y)]?.update();
                 }
             }
