@@ -188,8 +188,8 @@ class Particle {
     async updateNearby(vx, vy) {
         let self = this;
         if (self?.type instanceof Fluid && vy == 0) {
-            //await sleep(1)
-            self.update()
+            await sleep(1)
+            self.type.update()
         } else {
 
             for (let x = self.x - 2; x < self.x + 3; x++) {
@@ -244,6 +244,7 @@ class Sand {
         this.particle = particle;
     }
     async update() {
+        await sleep(1)
 
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
             this.particle.move(0, 1)
@@ -272,6 +273,7 @@ class Fluid {
         this.particle = particle;
     }
     async update() {
+        await sleep(1)
         if (particles[this.particle.x + "," + (this.particle.y - 1)]) {
             if (particles[this.particle.x + "," + (this.particle.y - 1)].type instanceof Sand) {
                 let random = Math.random() > 0.5 ? -1 : 1
