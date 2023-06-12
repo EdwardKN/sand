@@ -192,14 +192,14 @@ class Particle {
             await self.update()
         } else {
 
-            for (let x = self.x - 1; x < self.x + 2; x++) {
-                for (let y = self.y - 1; y < self.y + 2; y++) {
+            for (let x = self.x - 2; x < self.x + 3; x++) {
+                for (let y = self.y - 3; y < self.y + 4; y++) {
                     await sleep(1)
                     await particles[(x) + "," + (y)]?.update();
                 }
             }
-            for (let x = self.x - 1 - vx; x < self.x + 2 - vx; x++) {
-                for (let y = self.y - 1 - vy; y < self.y + 2 - vy; y++) {
+            for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
+                for (let y = self.y - 3 - vy; y < self.y + 4 - vy; y++) {
                     await sleep(1)
                     await particles[(x) + "," + (y)]?.update();
                 }
@@ -229,10 +229,12 @@ class Particle {
 
         particles[this.x + "," + this.y] = tmp;
 
+        if (tmp) {
+            tmp.updateNearby(0, 0);
+        }
         this.y += vy;
         this.x += vx;
         await this.draw();
-        await sleep(1000 / frames)
         let self = this;
         await self.updateNearby(vx, vy)
     }
@@ -535,8 +537,6 @@ async function update() {
 
     renderC.fillStyle = "gray"
     renderC.fillText(fps, 100, 100)
-
-
 }
 
 function getPerlinNoise(x, y, perlinSeed, resolution) {
