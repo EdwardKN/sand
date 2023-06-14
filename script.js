@@ -79,14 +79,17 @@ renderCanvas.addEventListener("mousedown", function (e) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
             createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "sand", "#c2b280")
         }
+        updateChunks()
     } else if (thisTool === 1) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
             createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "fluid", "#c2b280")
         }
+        updateChunks()
     } else if (thisTool === 2) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
             createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "solid", "gray")
         }
+        updateChunks()
     } else if (thisTool === 3) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
             let x = (mouse.x + i % size - Math.floor(size / 2 + player.x))
@@ -185,28 +188,6 @@ class Particle {
         this.type?.update();
     }
 
-    async updateNearby(vx, vy) {
-        let self = this;
-        if (self?.type instanceof Fluid && vy == 0) {
-            await sleep(1)
-            self.type.update()
-        } else {
-
-            for (let x = self.x - 2; x < self.x + 3; x++) {
-                for (let y = self.y - 2; y < self.y + 3; y++) {
-                    //await sleep(1)
-                    particles[(x) + "," + (y)]?.update();
-                }
-            }
-            for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
-                for (let y = self.y - 2 - vy; y < self.y + 3 - vy; y++) {
-                    //await sleep(1)
-                    particles[(x) + "," + (y)]?.update();
-                }
-            }
-        }
-    }
-
     async move(vx, vy) {
         let tmp = particles[(this.x + vx) + "," + (this.y + vy)]
         if (tmp) {
@@ -227,15 +208,20 @@ class Particle {
         particles[(this.x + vx) + "," + (this.y + vy)] = this;
 
         particles[this.x + "," + this.y] = tmp;
-
-        if (tmp) {
-            tmp.updateNearby(0, 0);
-        }
         this.y += vy;
         this.x += vx;
         this.draw();
-        let self = this;
-        self.updateNearby(vx, vy)
+        let chunk = {x:Math.floor(this.x/chunkSize),y:Math.floor(this.y/chunkSize)}
+        if(!chunksToUpdate.map(e => e.x).includes(chunk.x) && !chunksToUpdate.map(e => e.y).includes(chunk.y)){
+            chunksToUpdate.push(chunk)
+        }
+        if(tmp){
+            let chunk2 = {x:Math.floor(tmp.x/chunkSize),y:Math.floor(tmp.y/chunkSize)}
+            if(!chunksToUpdate.map(e => e.x).includes(chunk2.x) && !chunksToUpdate.map(e => e.y).includes(chunk2.y)){
+                chunksToUpdate.push(chunk2)
+            }
+        }
+        
     }
 };
 
@@ -469,7 +455,7 @@ var particles = []
 
 var chunks = [];
 
-function createParticle(x, y, type, color, texture) {
+async function createParticle(x, y, type, color, texture) {
     if (type == "solid") {
         particles[x + "," + y] = new Particle(x, y, color, texture)
         particles[x + "," + y].draw();
@@ -485,7 +471,10 @@ function createParticle(x, y, type, color, texture) {
                 particles[x + "," + y].type = new Fluid(particles[x + "," + y])
             }
             particles[x + "," + y].draw();
-            particles[x + "," + y].update();
+            let chunk = {x:Math.floor(x/chunkSize),y:Math.floor(y/chunkSize)}
+            if(!chunksToUpdate.map(e => e.x).includes(chunk.x) && !chunksToUpdate.map(e => e.y).includes(chunk.y)){
+                chunksToUpdate.push(chunk)
+            }
 
         } else {
             createParticle(x, y - 1, type, color, texture)
@@ -494,13 +483,22 @@ function createParticle(x, y, type, color, texture) {
 
 }
 
+var chunksToUpdate = []
+
+async function updateChunks(){
+        chunksToUpdate.forEach(function(e,i) {
+            for (let x = e.x*chunkSize, n = e.x*chunkSize+chunkSize; x < n; x++) {
+                for (let y =e.y*chunkSize, g = e.y*chunkSize+chunkSize; y < g; y++) {
+                    particles[x + "," + y]?.type?.update();
+                }
+            }
+            chunksToUpdate.splice(i,1)
+        })
+    
+}
 
 async function render() {
-    for (let x = 0 - Math.floor(player.x) - canvas.width / 2, n = canvas.width - player.x + canvas.width; x < n; x++) {
-        for (let y = 0 - Math.floor(player.y) - canvas.height / 2, g = canvas.height - player.y + canvas.height; y < g; y++) {
-            //particles[x + "," + y]?.type?.update();
-        }
-    }
+    
     for (let x = -Math.round(player.x / chunkSize) - 1, n = Math.round(canvas.width / chunkSize) - Math.round(player.x / chunkSize) + 1; x < n; x++) {
         for (let y = -Math.round(player.y / chunkSize) - 1, g = Math.round(canvas.height / chunkSize) - Math.round(player.y / chunkSize) + 1; y < g; y++) {
             if (chunks[x + "," + y]) {
@@ -508,6 +506,7 @@ async function render() {
             }
         }
     }
+    updateChunks();
 
     player.update();
 }
