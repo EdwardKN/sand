@@ -230,7 +230,7 @@ class Sand {
         this.particle = particle;
     }
     async update() {
-        await sleep(1)
+        await sleep()
 
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
             this.particle.move(0, 1)
@@ -240,13 +240,9 @@ class Sand {
 
             if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] == undefined) {
                 this.particle.move(random, 0)
-            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y + 1)] == undefined) {
-                this.particle.move(-random, 0)
             }
             if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)]?.type instanceof Fluid) {
                 this.particle.move(random, 0)
-            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y + 1)]?.type instanceof Fluid) {
-                this.particle.move(-random, 0)
             }
 
         }
@@ -266,8 +262,6 @@ class Fluid {
 
                 if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
                     this.particle.move(random, 0)
-                } else if (particles[(this.particle.x + -random) + "," + (this.particle.y)] == undefined) {
-                    this.particle.move(-random, 0)
                 }
                 return
             }
@@ -281,8 +275,6 @@ class Fluid {
 
             if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
                 this.particle.move(random, 0)
-            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y)] == undefined) {
-                this.particle.move(-random, 0)
             }
         }
     }
@@ -486,16 +478,22 @@ async function createParticle(x, y, type, color, texture) {
 var chunksToUpdate = []
 
 async function updateChunks(){
-        chunksToUpdate.forEach(function(e,i) {
-            for (let x = e.x*chunkSize, n = e.x*chunkSize+chunkSize; x < n; x++) {
-                for (let y =e.y*chunkSize, g = e.y*chunkSize+chunkSize; y < g; y++) {
+        chunksToUpdate.forEach(async function(e,i) {
+            for (let x = e.x*chunkSize - chunkSize, n = e.x*chunkSize+chunkSize + chunkSize; x < n; x++) {
+                for (let y =e.y*chunkSize - chunkSize, g = e.y*chunkSize+chunkSize + chunkSize; y < g; y++) {
                     particles[x + "," + y]?.type?.update();
                 }
             }
             chunksToUpdate.splice(i,1)
+            for (let x = e.x*chunkSize - chunkSize, n = e.x*chunkSize+chunkSize + chunkSize; x < n; x++) {
+                for (let y =e.y*chunkSize - chunkSize, g = e.y*chunkSize+chunkSize + chunkSize; y < g; y++) {
+                    particles[x + "," + y]?.type?.update();
+                }
+            }
         })
     
 }
+
 
 async function render() {
     
@@ -537,6 +535,8 @@ async function update() {
 
     renderC.fillStyle = "gray"
     renderC.fillText(fps, 100, 100)
+    renderC.fillStyle = "gray"
+    renderC.fillText(chunksToUpdate.length, 100, 120)
 }
 
 function getPerlinNoise(x, y, perlinSeed, resolution) {
