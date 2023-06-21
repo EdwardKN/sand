@@ -6,6 +6,8 @@ document.body.appendChild(canvas)
 canvas.width = 160;
 canvas.height = 90;
 
+
+
 var renderCanvas = document.createElement("canvas");
 var renderC = renderCanvas.getContext("2d");
 renderCanvas.style.zIndex = "10"
@@ -20,6 +22,11 @@ const chunkSize = 32;
 var mouse = {
     x: 1000,
     y: 1000
+}
+
+var camera = {
+    x:0,
+    y:0
 }
 
 let typetocreate = "sand"
@@ -67,12 +74,22 @@ async function preRender(imageObject) {
 renderCanvas.addEventListener("wheel", (e) => {
     currentTool += (Math.sign(e.deltaY))
 });
+renderCanvas.addEventListener("mousemove", e => {
+    mouse = {
+        x: Math.floor(e.offsetX / scale),
+        y: Math.floor(e.offsetY / scale)
+    }
+    camera.x = (canvas.width/2-mouse.x)
+    camera.y = (canvas.height/2-mouse.y)
+})
 
 renderCanvas.addEventListener("mousedown", function (e) {
     mouse = {
         x: Math.floor(e.offsetX / scale),
         y: Math.floor(e.offsetY / scale)
     }
+    player.inventory[player.selectedItem]?.use();
+    /*
     let size = 10;
     let thisTool = Math.abs(currentTool) % 4;
     if (thisTool === 0) {
@@ -106,7 +123,7 @@ renderCanvas.addEventListener("mousedown", function (e) {
                 }
             }
         }
-    }
+    }*/
 
 })
 
@@ -118,7 +135,7 @@ window.addEventListener("keydown", e => {
         player.directionX = 1;
     }
     if (e.code === "KeyW" && player.directionY == 0) {
-        player.directionY = 1;
+        player.jump()
     }
     if (e.code === "KeyS" && player.directionY == 0) {
         player.directionY = -1;
@@ -130,9 +147,6 @@ window.addEventListener("keyup", e => {
     }
     if (e.code === "KeyA" && player.directionX == 1) {
         player.directionX = 0;
-    }
-    if (e.code === "KeyW" && player.directionY == 1) {
-        player.directionY = 0;
     }
     if (e.code === "KeyS" && player.directionY == -1) {
         player.directionY = 0;
@@ -177,8 +191,6 @@ class Particle {
             let tmpFrameY = this.y >= 0 ? this.y % this.texture.sprite.frame.h : (this.texture.sprite.frame.h + this.y % (this.texture.sprite.frame.h))
             tmpFrameY = tmpFrameY == this.texture.sprite.frame.h ? 0 : tmpFrameY
             await drawImageFromSpriteSheet(this.texture, tmpX, tmpY, 1, 1, tmpFrameX, tmpFrameY, 1, 1, chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context)
-        } else {
-
         }
 
 
@@ -286,32 +298,41 @@ class Player {
         this.y = y;
         this.vx = 0;
         this.vy = 0;
-        this.speedLossX = 0.5;
-        this.speedLossY = 0.5;
+        this.speedLossX = 0.25;
+        this.speedLossY = 0.25;
         this.directionX = 0;
         this.directionY = 0;
-        this.clampX = 5;
-        this.clampY = 7;
-        this.speedToSpeedX = 1;
-        this.speedToSpeedY = 1;
+        this.clampX = 2.5;
+        this.clampY = 3;
+        this.speedToSpeedX = 0.5;
+        this.jumpInitSpeed = 3;
         this.w = 5
         this.h = 10;
         this.weight = 0.1
         this.gravityV = 0;
-        this.gravityClamp = 4;
+        this.gravityClamp = 5;
+        this.onFloor = false;
+
+        this.inventory = [];
+        this.selectedItem = 0;
     }
     draw() {
         c.fillStyle = "black"
-        c.fillRect(Math.floor(canvas.width / 2 - this.w / 2), Math.floor(canvas.height / 2 - this.h / 2), this.w, this.h)
+        c.fillRect(Math.floor(canvas.width / 2 - this.w / 2 + camera.x), Math.floor(canvas.height / 2 - this.h / 2 + camera.y), this.w, this.h)
     }
     update() {
         this.draw()
 
+        this.inventory[this.selectedItem].draw();
+
 
         this.vx = this.updateVelocity(this.vx, this.directionX, this.speedLossX, this.clampX, this.speedToSpeedX)
-        this.vy = this.updateVelocity(this.vy, this.directionY, this.speedLossY, this.clampY, this.speedToSpeedY)
-
+        
         this.gravityV = this.gravity(this.gravityV, this.gravityClamp)
+
+        this.vy > 0 ? this.vy-=this.speedLossY : 0;
+        
+        this.onFloor = false;
 
         this.checkCollisions();
 
@@ -321,6 +342,11 @@ class Player {
 
 
 
+    }
+    jump(){
+        if(this.onFloor){
+            this.vy = this.jumpInitSpeed;
+        }
     }
 
     checkCollisions() {
@@ -333,6 +359,7 @@ class Player {
             }
         }
         if (tmp) {
+            this.onFloor = true;
             this.gravityV = 0;
             if (this.vy < 0) {
                 this.vy = 0;
@@ -356,7 +383,7 @@ class Player {
         }
         if (tmp2) {
             if (this.directionY == 1) {
-                this.vy = -this.gravityV;
+                this.vy -= this.speedLossY;
             }
             for (let i = 0; i < this.w; i++) {
                 if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2))]) {
@@ -367,7 +394,7 @@ class Player {
             }
         }
         let tmp3 = false;
-        for (let i = 0; i < this.h; i++) {
+        for (let i = 0; i < this.h-2; i++) {
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
                 if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                     tmp3 = true;
@@ -387,7 +414,7 @@ class Player {
             }
         }
         let tmp4 = false;
-        for (let i = 0; i < this.h; i++) {
+        for (let i = 0; i < this.h-2; i++) {
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
                 if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                     tmp4 = true;
@@ -441,6 +468,96 @@ class Player {
 
         return v;
     }
+}
+
+class Item{
+    constructor(type){
+        this.type = type;
+        this.type.parent = this;
+        this.parent = undefined;
+    }
+    use(){
+        this.type.use();
+    }
+    draw(){
+        this.type.draw();
+    }
+}
+
+class Tool{
+    constructor(type){
+        this.type = type;
+        this.type.parent = this;
+        this.parent = undefined;
+    }
+    use(){
+        this.type.use();
+    }
+    draw(){
+        this.type.draw();
+    }
+}
+
+class GrapplingGun{
+    constructor(){
+        this.anchor = undefined;
+        this.parent = undefined;
+        this.ropeLength = undefined;
+    }
+    use(){
+        if(this.anchor == undefined || this.anchor?.stuck == true){
+            let dist = Math.sqrt(Math.pow((canvas.width/2 + camera.x)-mouse.x,2) + Math.pow((canvas.height/2 + camera.y)-mouse.y,2))
+            let dirX = ((canvas.width/2 + camera.x)-mouse.x)/ dist
+            let dirY = ((canvas.height/2 + camera.y)-mouse.y) / dist
+            this.anchor = new GrapplingHook(-this.parent.parent.parent.x,-this.parent.parent.parent.y,dirX,dirY)
+            this.anchor.parent = this;
+        }
+    }
+    draw(){
+        let dist = Math.sqrt(Math.pow((canvas.width/2 + camera.x)-mouse.x,2) + Math.pow((canvas.height/2 + camera.y)-mouse.y,2))
+        let dirX = ((canvas.width/2 + camera.x)-mouse.x)/ dist
+        let dirY = ((canvas.height/2 + camera.y)-mouse.y) / dist
+        c.lineWidth = 1;
+        c.strokeStyle = "red"
+
+        c.beginPath();
+        c.moveTo(canvas.width/2 + camera.x,canvas.height/2 + camera.y);
+        c.lineTo(canvas.width/2-dirX*5 + camera.x,canvas.height/2-dirY*5 + camera.y)
+        c.stroke();
+        this.anchor?.update();
+        this.anchor?.draw();
+    }
+}
+
+class GrapplingHook{
+    constructor(x,y,dirX,dirY){
+        this.x = x;
+        this.y = y;
+        this.dirX = dirX;
+        this.dirY = dirY;
+        this.stuck = false;
+        this.parent = undefined;
+    }
+    update(){
+        if(particles[Math.floor(this.x + canvas.width/2) + "," +  Math.floor(this.y+ canvas.height/2)] !== undefined && this.stuck == false){
+            this.stuck = true;
+            this.parent.ropeLength = distance(-this.x, -this.y, player.x,player.y)
+        }
+        if(!this.stuck){
+            this.x -= this.dirX;
+            this.y -= this.dirY;
+        }
+    }
+    draw(){
+        c.fillStyle = "green"
+        c.fillRect(Math.floor(this.x + player.x + (canvas.width/2 + camera.x)),Math.floor(this.y + player.y + (canvas.height/2 + camera.y)), 2, 2)
+        c.beginPath();
+        c.moveTo((canvas.width/2 + camera.x),(canvas.height/2 + camera.y));
+        c.lineTo(this.x + player.x + (canvas.width/2 + camera.x),this.y + player.y + (canvas.height/2 + camera.y))
+        c.stroke();
+        
+    }
+
 }
 
 var particles = []
@@ -497,10 +614,10 @@ async function updateChunks(){
 
 async function render() {
     
-    for (let x = -Math.round(player.x / chunkSize) - 1, n = Math.round(canvas.width / chunkSize) - Math.round(player.x / chunkSize) + 1; x < n; x++) {
-        for (let y = -Math.round(player.y / chunkSize) - 1, g = Math.round(canvas.height / chunkSize) - Math.round(player.y / chunkSize) + 1; y < g; y++) {
+    for (let x = -Math.round((player.x + camera.x) / chunkSize) - 1, n = Math.round(canvas.width / chunkSize) - Math.round((player.x + camera.x) / chunkSize) + 1; x < n; x++) {
+        for (let y = -Math.round((player.y + camera.y) / chunkSize) - 1, g = Math.round(canvas.height / chunkSize) - Math.round((player.y + camera.y) / chunkSize) + 1; y < g; y++) {
             if (chunks[x + "," + y]) {
-                c.drawImage(chunks[x + "," + y].canvas, x * chunkSize + Math.floor(player.x), y * chunkSize + Math.floor(player.y))
+                c.drawImage(chunks[x + "," + y].canvas, x * chunkSize + Math.floor(player.x) + Math.floor(camera.x), y * chunkSize + Math.floor(player.y) + Math.floor(camera.y))
             }
         }
     }
@@ -550,7 +667,17 @@ function getPerlinNoise(x, y, perlinSeed, resolution) {
 
 }
 
+function distance(x1, y1, x2, y2){
+    const xDist = x2 - x1;
+    const yDist = y2 - y1;
+
+    return Math.sqrt(Math.pow(xDist, 2) + Math.pow(yDist, 2));
+};
+
 var player = new Player(0, 0)
+
+player.inventory.push(new Item(new Tool(new GrapplingGun())))
+player.inventory[0].parent = player;
 
 async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
