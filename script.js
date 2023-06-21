@@ -79,8 +79,8 @@ renderCanvas.addEventListener("mousemove", e => {
         x: Math.floor(e.offsetX / scale),
         y: Math.floor(e.offsetY / scale)
     }
-    camera.x = (canvas.width/2-mouse.x)
-    camera.y = (canvas.height/2-mouse.y)
+    camera.x = (canvas.width/2-mouse.x) / 2
+    camera.y = (canvas.height/2-mouse.y) / 2
 })
 
 renderCanvas.addEventListener("mousedown", function (e) {
@@ -318,7 +318,7 @@ class Player {
     }
     draw() {
         c.fillStyle = "black"
-        c.fillRect(Math.floor(canvas.width / 2 - this.w / 2 + camera.x), Math.floor(canvas.height / 2 - this.h / 2 + camera.y), this.w, this.h)
+        c.fillRect(Math.floor(canvas.width / 2 - this.w / 2) + Math.floor(camera.x), Math.floor(canvas.height / 2 - this.h / 2) + Math.floor(camera.y), this.w, this.h)
     }
     update() {
         this.draw()
@@ -502,7 +502,7 @@ class GrapplingGun{
     constructor(){
         this.anchor = undefined;
         this.parent = undefined;
-        this.ropeLength = undefined;
+        this.rope = undefined;
     }
     use(){
         if(this.anchor == undefined || this.anchor?.stuck == true){
@@ -511,6 +511,9 @@ class GrapplingGun{
             let dirY = ((canvas.height/2 + camera.y)-mouse.y) / dist
             this.anchor = new GrapplingHook(-this.parent.parent.parent.x,-this.parent.parent.parent.y,dirX,dirY)
             this.anchor.parent = this;
+            this.rope = new Rope(-this.parent.parent.parent.x,-this.parent.parent.parent.y,this.anchor.x,this.anchor.y)
+            this.rope.parent = this;
+
         }
     }
     draw(){
@@ -526,6 +529,50 @@ class GrapplingGun{
         c.stroke();
         this.anchor?.update();
         this.anchor?.draw();
+        this.rope?.update();
+        this.rope?.draw();
+    }
+}
+
+class Rope{
+    constructor(fromX,fromY,toX,toY){
+        this.fromX = fromX;
+        this.fromY = fromY;
+        this.toX = toX;
+        this.toY = toY
+        this.length = distance(this.fromX,this.fromY,this.toX,this.toY);
+        this.nodes = [];
+        this.parent = undefined;
+    }
+    update(){
+        if(this.parent.anchor.stuck){
+            this.fromX = -this.parent.parent.parent.parent.x;
+            this.fromY = -this.parent.parent.parent.parent.y;
+            this.length = distance(this.fromX,this.fromY,this.toX,this.toY);
+            let dirX = (this.fromX-this.toX)/ this.length
+            let dirY = (this.fromY-this.toY) / this.length
+            if(this.nodes.length !== Math.floor(this.length)){
+                this.nodes = [];
+                for(let i = 1; i < Math.floor(this.length + 1); i++){
+                    this.nodes.push(new Node(-dirX*i,-dirY*i))
+                }
+            }
+        }
+    }
+    draw(){
+        this.nodes.forEach(e => {
+            e.draw();
+        })
+    }
+}
+class Node{
+    constructor(x,y){
+        this.x = x;
+        this.y = y;
+    }
+    draw(){
+        c.fillStyle = "black"
+        c.fillRect(this.x + camera.x + canvas.width/2,this.y + camera.y + canvas.height/2,1,1)
     }
 }
 
@@ -541,11 +588,12 @@ class GrapplingHook{
     update(){
         if(particles[Math.floor(this.x + canvas.width/2) + "," +  Math.floor(this.y+ canvas.height/2)] !== undefined && this.stuck == false){
             this.stuck = true;
-            this.parent.ropeLength = distance(-this.x, -this.y, player.x,player.y)
         }
         if(!this.stuck){
             this.x -= this.dirX;
             this.y -= this.dirY;
+            this.parent.rope.toX = this.x;
+            this.parent.rope.toY = this.y;
         }
     }
     draw(){
@@ -614,8 +662,8 @@ async function updateChunks(){
 
 async function render() {
     
-    for (let x = -Math.round((player.x + camera.x) / chunkSize) - 1, n = Math.round(canvas.width / chunkSize) - Math.round((player.x + camera.x) / chunkSize) + 1; x < n; x++) {
-        for (let y = -Math.round((player.y + camera.y) / chunkSize) - 1, g = Math.round(canvas.height / chunkSize) - Math.round((player.y + camera.y) / chunkSize) + 1; y < g; y++) {
+    for (let x = -Math.floor((player.x + camera.x) / chunkSize) - 1, n = Math.floor(canvas.width / chunkSize) - Math.floor((player.x + camera.x) / chunkSize) + 1; x < n; x++) {
+        for (let y = -Math.floor((player.y + camera.y) / chunkSize) - 1, g = Math.floor(canvas.height / chunkSize) - Math.floor((player.y + camera.y) / chunkSize) + 1; y < g; y++) {
             if (chunks[x + "," + y]) {
                 c.drawImage(chunks[x + "," + y].canvas, x * chunkSize + Math.floor(player.x) + Math.floor(camera.x), y * chunkSize + Math.floor(player.y) + Math.floor(camera.y))
             }
