@@ -25,8 +25,8 @@ var mouse = {
 }
 
 var camera = {
-    x:0,
-    y:0
+    x: 0,
+    y: 0
 }
 
 let typetocreate = "sand"
@@ -79,8 +79,8 @@ renderCanvas.addEventListener("mousemove", e => {
         x: Math.floor(e.offsetX / scale),
         y: Math.floor(e.offsetY / scale)
     }
-    camera.x = (canvas.width/2-mouse.x) / 2
-    camera.y = (canvas.height/2-mouse.y) / 2
+    camera.x = (canvas.width / 2 - mouse.x) / 2
+    camera.y = (canvas.height / 2 - mouse.y) / 2
 })
 
 renderCanvas.addEventListener("mousedown", function (e) {
@@ -128,6 +128,7 @@ renderCanvas.addEventListener("mousedown", function (e) {
 })
 
 window.addEventListener("keydown", e => {
+    console.log(e.code)
     if (e.code === "KeyD" && player.directionX == 0) {
         player.directionX = -1;
     }
@@ -139,6 +140,12 @@ window.addEventListener("keydown", e => {
     }
     if (e.code === "KeyS" && player.directionY == 0) {
         player.directionY = -1;
+    }
+    if (e.code === "ArrowUp" && player.inventory[player.selectedItem]?.type?.type?.rope) {
+        player.inventory[player.selectedItem].type.type.rope.length++;
+    }
+    if (e.code === "ArrowDown" && player.inventory[player.selectedItem]?.type?.type?.rope) {
+        player.inventory[player.selectedItem].type.type.rope.length--;
     }
 })
 window.addEventListener("keyup", e => {
@@ -223,17 +230,17 @@ class Particle {
         this.y += vy;
         this.x += vx;
         this.draw();
-        let chunk = {x:Math.floor(this.x/chunkSize),y:Math.floor(this.y/chunkSize)}
-        if(!chunksToUpdate.map(e => e.x).includes(chunk.x) && !chunksToUpdate.map(e => e.y).includes(chunk.y)){
+        let chunk = { x: Math.floor(this.x / chunkSize), y: Math.floor(this.y / chunkSize) }
+        if (!chunksToUpdate.map(e => e.x).includes(chunk.x) && !chunksToUpdate.map(e => e.y).includes(chunk.y)) {
             chunksToUpdate.push(chunk)
         }
-        if(tmp){
-            let chunk2 = {x:Math.floor(tmp.x/chunkSize),y:Math.floor(tmp.y/chunkSize)}
-            if(!chunksToUpdate.map(e => e.x).includes(chunk2.x) && !chunksToUpdate.map(e => e.y).includes(chunk2.y)){
+        if (tmp) {
+            let chunk2 = { x: Math.floor(tmp.x / chunkSize), y: Math.floor(tmp.y / chunkSize) }
+            if (!chunksToUpdate.map(e => e.x).includes(chunk2.x) && !chunksToUpdate.map(e => e.y).includes(chunk2.y)) {
                 chunksToUpdate.push(chunk2)
             }
         }
-        
+
     }
 };
 
@@ -309,9 +316,9 @@ class Player {
         this.w = 5
         this.h = 10;
         this.weight = 0.1
-        this.gravityV = 0;
-        this.gravityClamp = 5;
         this.onFloor = false;
+        this.stopY = false;
+        this.stopX = false;
 
         this.inventory = [];
         this.selectedItem = 0;
@@ -325,26 +332,26 @@ class Player {
 
         this.inventory[this.selectedItem].draw();
 
-
         this.vx = this.updateVelocity(this.vx, this.directionX, this.speedLossX, this.clampX, this.speedToSpeedX)
-        
-        this.gravityV = this.gravity(this.gravityV, this.gravityClamp)
 
-        this.vy > 0 ? this.vy-=this.speedLossY : 0;
-        
+        this.vy > 0 ? this.vy -= this.speedLossY : 0;
+        if (this.onFloor === false && this.inventory[this.selectedItem]?.type?.type?.rope?.length > distance(-this.inventory[this.selectedItem]?.type?.type?.rope?.from?.x, -this.inventory[this.selectedItem]?.type?.type?.rope?.from?.y, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.x, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.y) && this.inventory[this.selectedItem]?.type?.type?.rope?.length !== 0) {
+            this.vy -= 0.2;
+        }
+
         this.onFloor = false;
 
         this.checkCollisions();
 
         this.x += this.vx
 
-        this.y += this.vy + this.gravityV
+        this.y += this.vy
 
 
 
     }
-    jump(){
-        if(this.onFloor){
+    jump() {
+        if (this.onFloor) {
             this.vy = this.jumpInitSpeed;
         }
     }
@@ -360,7 +367,6 @@ class Player {
         }
         if (tmp) {
             this.onFloor = true;
-            this.gravityV = 0;
             if (this.vy < 0) {
                 this.vy = 0;
             }
@@ -394,7 +400,7 @@ class Player {
             }
         }
         let tmp3 = false;
-        for (let i = 0; i < this.h-2; i++) {
+        for (let i = 0; i < this.h - 2; i++) {
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
                 if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                     tmp3 = true;
@@ -414,7 +420,7 @@ class Player {
             }
         }
         let tmp4 = false;
-        for (let i = 0; i < this.h-2; i++) {
+        for (let i = 0; i < this.h - 2; i++) {
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
                 if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
                     tmp4 = true;
@@ -457,75 +463,63 @@ class Player {
         return v
 
     }
-    gravity(v, clamp) {
-        if (v > clamp) {
-            v = clamp;
-        }
-        if (v < -clamp) {
-            v = -clamp;
-        }
-        v -= this.weight;
-
-        return v;
-    }
 }
 
-class Item{
-    constructor(type){
+class Item {
+    constructor(type) {
         this.type = type;
         this.type.parent = this;
         this.parent = undefined;
     }
-    use(){
+    use() {
         this.type.use();
     }
-    draw(){
+    draw() {
         this.type.draw();
     }
 }
 
-class Tool{
-    constructor(type){
+class Tool {
+    constructor(type) {
         this.type = type;
         this.type.parent = this;
         this.parent = undefined;
     }
-    use(){
+    use() {
         this.type.use();
     }
-    draw(){
+    draw() {
         this.type.draw();
     }
 }
 
-class GrapplingGun{
-    constructor(){
+class GrapplingGun {
+    constructor() {
         this.anchor = undefined;
         this.parent = undefined;
         this.rope = undefined;
     }
-    use(){
-        if(this.anchor == undefined || this.anchor?.stuck == true){
-            let dist = Math.sqrt(Math.pow((canvas.width/2 + camera.x)-mouse.x,2) + Math.pow((canvas.height/2 + camera.y)-mouse.y,2))
-            let dirX = ((canvas.width/2 + camera.x)-mouse.x)/ dist
-            let dirY = ((canvas.height/2 + camera.y)-mouse.y) / dist
-            this.anchor = new GrapplingHook(-this.parent.parent.parent.x,-this.parent.parent.parent.y,dirX,dirY)
+    use() {
+        if (this.anchor == undefined || this.anchor?.stuck == true) {
+            let dist = Math.sqrt(Math.pow((canvas.width / 2 + camera.x) - mouse.x, 2) + Math.pow((canvas.height / 2 + camera.y) - mouse.y, 2))
+            let dirX = ((canvas.width / 2 + camera.x) - mouse.x) / dist
+            let dirY = ((canvas.height / 2 + camera.y) - mouse.y) / dist
+            this.anchor = new GrapplingHook(-this.parent.parent.parent.x, -this.parent.parent.parent.y, dirX, dirY)
             this.anchor.parent = this;
-            this.rope = new Rope(-this.parent.parent.parent.x,-this.parent.parent.parent.y,this.anchor.x,this.anchor.y)
+            this.rope = new Rope(this.parent.parent.parent, this.anchor)
             this.rope.parent = this;
-
         }
     }
-    draw(){
-        let dist = Math.sqrt(Math.pow((canvas.width/2 + camera.x)-mouse.x,2) + Math.pow((canvas.height/2 + camera.y)-mouse.y,2))
-        let dirX = ((canvas.width/2 + camera.x)-mouse.x)/ dist
-        let dirY = ((canvas.height/2 + camera.y)-mouse.y) / dist
+    draw() {
+        let dist = Math.sqrt(Math.pow((canvas.width / 2 + camera.x) - mouse.x, 2) + Math.pow((canvas.height / 2 + camera.y) - mouse.y, 2))
+        let dirX = ((canvas.width / 2 + camera.x) - mouse.x) / dist
+        let dirY = ((canvas.height / 2 + camera.y) - mouse.y) / dist
         c.lineWidth = 1;
         c.strokeStyle = "red"
 
         c.beginPath();
-        c.moveTo(canvas.width/2 + camera.x,canvas.height/2 + camera.y);
-        c.lineTo(canvas.width/2-dirX*5 + camera.x,canvas.height/2-dirY*5 + camera.y)
+        c.moveTo(canvas.width / 2 + camera.x, canvas.height / 2 + camera.y);
+        c.lineTo(canvas.width / 2 - dirX * 5 + camera.x, canvas.height / 2 - dirY * 5 + camera.y)
         c.stroke();
         this.anchor?.update();
         this.anchor?.draw();
@@ -534,50 +528,46 @@ class GrapplingGun{
     }
 }
 
-class Rope{
-    constructor(fromX,fromY,toX,toY){
-        this.fromX = fromX;
-        this.fromY = fromY;
-        this.toX = toX;
-        this.toY = toY
-        this.length = distance(this.fromX,this.fromY,this.toX,this.toY);
+class Rope {
+    constructor(from, to) {
+        this.from = from;
+        this.to = to;
+        this.length = distance(-this.from.x, -this.from.y, this.to.x, this.to.y);
         this.nodes = [];
         this.parent = undefined;
     }
-    update(){
-        if(this.parent.anchor.stuck){
-            this.fromX = -this.parent.parent.parent.parent.x;
-            this.fromY = -this.parent.parent.parent.parent.y;
-            this.length = distance(this.fromX,this.fromY,this.toX,this.toY);
-            let dirX = (this.fromX-this.toX)/ this.length
-            let dirY = (this.fromY-this.toY) / this.length
-            if(this.nodes.length !== Math.floor(this.length)){
-                this.nodes = [];
-                for(let i = 1; i < Math.floor(this.length + 1); i++){
-                    this.nodes.push(new Node(-dirX*i,-dirY*i))
-                }
-            }
+    update() {
+        let dirX = (-this.from.x - this.to.x) / this.length
+        let dirY = (-this.from.y - this.to.y) / this.length
+        this.nodes = [];
+        for (let i = 1; i < Math.floor(this.length + 1); i++) {
+            this.nodes.push(new Node(-dirX * i, -dirY * i))
         }
+        if (this.length < distance(-this.from.x, -this.from.y, this.to.x, this.to.y) && this.length !== 0) {
+            this.from.x += (-this.from.x - this.to.x) / this.length
+            this.from.y += (-this.from.y - this.to.y) / this.length + this.from.vy
+        }
+
     }
-    draw(){
+    draw() {
         this.nodes.forEach(e => {
             e.draw();
         })
     }
 }
-class Node{
-    constructor(x,y){
+class Node {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
     }
-    draw(){
+    draw() {
         c.fillStyle = "black"
-        c.fillRect(this.x + camera.x + canvas.width/2,this.y + camera.y + canvas.height/2,1,1)
+        c.fillRect(this.x + camera.x + canvas.width / 2, this.y + camera.y + canvas.height / 2, 1, 1)
     }
 }
 
-class GrapplingHook{
-    constructor(x,y,dirX,dirY){
+class GrapplingHook {
+    constructor(x, y, dirX, dirY) {
         this.x = x;
         this.y = y;
         this.dirX = dirX;
@@ -585,25 +575,24 @@ class GrapplingHook{
         this.stuck = false;
         this.parent = undefined;
     }
-    update(){
-        if(particles[Math.floor(this.x + canvas.width/2) + "," +  Math.floor(this.y+ canvas.height/2)] !== undefined && this.stuck == false){
+    update() {
+        if (particles[Math.floor(this.x + canvas.width / 2) + "," + Math.floor(this.y + canvas.height / 2)] !== undefined && this.stuck == false) {
             this.stuck = true;
+            this.parent.rope.length = distance(this.parent.rope.from.x, this.parent.rope.from.y, this.parent.rope.to.x, this.parent.rope.to.y);
         }
-        if(!this.stuck){
+        if (!this.stuck) {
             this.x -= this.dirX;
             this.y -= this.dirY;
-            this.parent.rope.toX = this.x;
-            this.parent.rope.toY = this.y;
         }
     }
-    draw(){
+    draw() {
         c.fillStyle = "green"
-        c.fillRect(Math.floor(this.x + player.x + (canvas.width/2 + camera.x)),Math.floor(this.y + player.y + (canvas.height/2 + camera.y)), 2, 2)
+        c.fillRect(Math.floor(this.x + player.x + (canvas.width / 2 + camera.x)), Math.floor(this.y + player.y + (canvas.height / 2 + camera.y)), 2, 2)
         c.beginPath();
-        c.moveTo((canvas.width/2 + camera.x),(canvas.height/2 + camera.y));
-        c.lineTo(this.x + player.x + (canvas.width/2 + camera.x),this.y + player.y + (canvas.height/2 + camera.y))
+        c.moveTo((canvas.width / 2 + camera.x), (canvas.height / 2 + camera.y));
+        c.lineTo(this.x + player.x + (canvas.width / 2 + camera.x), this.y + player.y + (canvas.height / 2 + camera.y))
         c.stroke();
-        
+
     }
 
 }
@@ -628,8 +617,8 @@ async function createParticle(x, y, type, color, texture) {
                 particles[x + "," + y].type = new Fluid(particles[x + "," + y])
             }
             particles[x + "," + y].draw();
-            let chunk = {x:Math.floor(x/chunkSize),y:Math.floor(y/chunkSize)}
-            if(!chunksToUpdate.map(e => e.x).includes(chunk.x) && !chunksToUpdate.map(e => e.y).includes(chunk.y)){
+            let chunk = { x: Math.floor(x / chunkSize), y: Math.floor(y / chunkSize) }
+            if (!chunksToUpdate.map(e => e.x).includes(chunk.x) && !chunksToUpdate.map(e => e.y).includes(chunk.y)) {
                 chunksToUpdate.push(chunk)
             }
 
@@ -642,26 +631,26 @@ async function createParticle(x, y, type, color, texture) {
 
 var chunksToUpdate = []
 
-async function updateChunks(){
-        chunksToUpdate.forEach(async function(e,i) {
-            for (let x = e.x*chunkSize - chunkSize, n = e.x*chunkSize+chunkSize + chunkSize; x < n; x++) {
-                for (let y =e.y*chunkSize - chunkSize, g = e.y*chunkSize+chunkSize + chunkSize; y < g; y++) {
-                    particles[x + "," + y]?.type?.update();
-                }
+async function updateChunks() {
+    chunksToUpdate.forEach(async function (e, i) {
+        for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
+            for (let y = e.y * chunkSize - chunkSize, g = e.y * chunkSize + chunkSize + chunkSize; y < g; y++) {
+                particles[x + "," + y]?.type?.update();
             }
-            chunksToUpdate.splice(i,1)
-            for (let x = e.x*chunkSize - chunkSize, n = e.x*chunkSize+chunkSize + chunkSize; x < n; x++) {
-                for (let y =e.y*chunkSize - chunkSize, g = e.y*chunkSize+chunkSize + chunkSize; y < g; y++) {
-                    particles[x + "," + y]?.type?.update();
-                }
+        }
+        chunksToUpdate.splice(i, 1)
+        for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
+            for (let y = e.y * chunkSize - chunkSize, g = e.y * chunkSize + chunkSize + chunkSize; y < g; y++) {
+                particles[x + "," + y]?.type?.update();
             }
-        })
-    
+        }
+    })
+
 }
 
 
 async function render() {
-    
+
     for (let x = -Math.floor((player.x + camera.x) / chunkSize) - 1, n = Math.floor(canvas.width / chunkSize) - Math.floor((player.x + camera.x) / chunkSize) + 1; x < n; x++) {
         for (let y = -Math.floor((player.y + camera.y) / chunkSize) - 1, g = Math.floor(canvas.height / chunkSize) - Math.floor((player.y + camera.y) / chunkSize) + 1; y < g; y++) {
             if (chunks[x + "," + y]) {
@@ -715,7 +704,7 @@ function getPerlinNoise(x, y, perlinSeed, resolution) {
 
 }
 
-function distance(x1, y1, x2, y2){
+function distance(x1, y1, x2, y2) {
     const xDist = x2 - x1;
     const yDist = y2 - y1;
 
