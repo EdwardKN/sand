@@ -19,7 +19,8 @@ const chunkSize = 32;
 
 var mouse = {
     x: 1000,
-    y: 1000
+    y: 1000,
+    down: false
 }
 
 let typetocreate = "sand"
@@ -67,44 +68,17 @@ async function preRender(imageObject) {
 renderCanvas.addEventListener("wheel", (e) => {
     currentTool += (Math.sign(e.deltaY))
 });
+renderCanvas.addEventListener("mousemove", function (e) {
+    mouse.x = Math.floor(e.offsetX / scale)
+    mouse.y = Math.floor(e.offsetY / scale)
+})
 
 renderCanvas.addEventListener("mousedown", function (e) {
-    mouse = {
-        x: Math.floor(e.offsetX / scale),
-        y: Math.floor(e.offsetY / scale)
-    }
-    let size = 10;
-    let thisTool = Math.abs(currentTool) % 4;
-    if (thisTool === 0) {
-        for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "sand", "#c2b280")
-        }
-    } else if (thisTool === 1) {
-        for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "fluid", "#c2b280")
-        }
-    } else if (thisTool === 2) {
-        for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "solid", "gray")
-        }
-    } else if (thisTool === 3) {
-        for (let i = 0; i < Math.pow(size, 2); i++) {
-            let x = (mouse.x + i % size - Math.floor(size / 2 + player.x))
-            let y = (mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y))
-            particles[x + "," + y] = undefined;
-            let tmpX = x >= 0 ? x % chunkSize : (chunkSize + x % (chunkSize))
-            let tmpY = y >= 0 ? y % chunkSize : (chunkSize + y % (chunkSize))
-            tmpX = tmpX == chunkSize ? 0 : tmpX
-            tmpY = tmpY == chunkSize ? 0 : tmpY
-            chunks[Math.floor(x / chunkSize) + "," + Math.floor(y / chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
-            for (let x2 = x - 2; x2 < x + 2; x2++) {
-                for (let y2 = y - 2; y2 < y + 2; y2++) {
-                    particles[(x2) + "," + (y2)]?.type?.update();
-                }
-            }
-        }
-    }
+    mouse.down = true;    
+})
 
+window.addEventListener("mouseup", e => {
+    mouse.down = false;
 })
 
 window.addEventListener("keydown", e => {
@@ -191,15 +165,15 @@ class Particle {
         if (self?.type instanceof Fluid && vy == 0) {
             self.type.update()
         } else {
-            for (let y = self.y + 4; y >= self.y - 3; y--) {
-                for (let x = self.x + 3; x < self.x + 4; x++) {
+            for (let y = self.y + 3; y >= self.y - 2; y--) {
+                for (let x = self.x + 2; x < self.x + 3; x++) {
                     if(!updateQueue.includes(particles[(x) + "," + (y)])){
                         updateQueue.push(particles[(x) + "," + (y)])
                     }
                 }
             }
-            for (let y = self.y + 4 - vy; y >= self.y - 3 - vy; y--) {
-                for (let x = self.x - 3 - vx; x < self.x + 4 - vx; x++) {
+            for (let y = self.y + 3 - vy; y >= self.y - 2 - vy; y--) {
+                for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
                     if(!updateQueue.includes(particles[(x) + "," + (y)])){
                         updateQueue.push(particles[(x) + "," + (y)])
                     }                
@@ -242,11 +216,10 @@ class Particle {
 
 var updateQueue = [];
 async function updateNextInQueue(){
-    updateQueue.forEach(e => {
-        e?.update();
+    await updateQueue.forEach(async function(e) {
+        await e?.update();
         updateQueue.shift();
     })
-
 }
 
 class Sand {
@@ -254,12 +227,12 @@ class Sand {
         this.particle = particle;
     }
     async update() {
+        let random = Math.random() > 0.5 ? -1 : 1
 
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
             this.particle.move(0, 1)
             return
         } else {
-            let random = Math.random() > 0.5 ? -1 : 1
 
             if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] == undefined) {
                 this.particle.move(random, 0)
@@ -496,7 +469,7 @@ function createParticle(x, y, type, color, texture) {
             particles[x + "," + y].updateNearby();
 
         } else {
-            createParticle(x, y - 1, type, color, texture)
+            //createParticle(x, y - 1, type, color, texture)
         }
     }
 
@@ -537,6 +510,10 @@ async function update() {
 
     c.clearRect(0, 0, canvas.width, canvas.height);
     await updateNextInQueue();
+
+    if(mouse.down){
+        buttonPress();
+    }
 
 
     render();
@@ -583,6 +560,40 @@ function refreshLoop() {
         fps = times.length;
         refreshLoop();
     });
+}
+
+function buttonPress(){
+    let size = 10;
+    let thisTool = Math.abs(currentTool) % 4;
+    if (thisTool === 0) {
+        for (let i = 0; i < Math.pow(size, 2); i++) {
+            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "sand", "#c2b280")
+        }
+    } else if (thisTool === 1) {
+        for (let i = 0; i < Math.pow(size, 2); i++) {
+            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "fluid", "#c2b280")
+        }
+    } else if (thisTool === 2) {
+        for (let i = 0; i < Math.pow(size, 2); i++) {
+            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "solid", "gray")
+        }
+    } else if (thisTool === 3) {
+        for (let i = 0; i < Math.pow(size, 2); i++) {
+            let x = (mouse.x + i % size - Math.floor(size / 2 + player.x))
+            let y = (mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y))
+            particles[x + "," + y] = undefined;
+            let tmpX = x >= 0 ? x % chunkSize : (chunkSize + x % (chunkSize))
+            let tmpY = y >= 0 ? y % chunkSize : (chunkSize + y % (chunkSize))
+            tmpX = tmpX == chunkSize ? 0 : tmpX
+            tmpY = tmpY == chunkSize ? 0 : tmpY
+            chunks[Math.floor(x / chunkSize) + "," + Math.floor(y / chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
+            for (let x2 = x - 2; x2 < x + 2; x2++) {
+                for (let y2 = y - 2; y2 < y + 2; y2++) {
+                    particles[(x2) + "," + (y2)]?.type?.update();
+                }
+            }
+        }
+    }
 }
 
 
