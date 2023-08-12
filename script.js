@@ -17,7 +17,7 @@ var currentTool = 0;
 
 var scale;
 
-const chunkSize = 32;
+const chunkSize = 16;
 
 var mouse = {
     x: 1000,
@@ -79,8 +79,8 @@ renderCanvas.addEventListener("mousemove", e => {
         x: Math.floor(e.offsetX / scale),
         y: Math.floor(e.offsetY / scale)
     }
-    camera.x = (canvas.width / 2 - mouse.x) / 2
-    camera.y = (canvas.height / 2 - mouse.y) / 2
+    //camera.x = (canvas.width / 2 - mouse.x) / 2
+    //camera.y = (canvas.height / 2 - mouse.y) / 2
 })
 
 renderCanvas.addEventListener("mousedown", function (e) {
@@ -89,7 +89,7 @@ renderCanvas.addEventListener("mousedown", function (e) {
         y: Math.floor(e.offsetY / scale)
     }
     player.inventory[player.selectedItem]?.use();
-    /*
+    
     let size = 10;
     let thisTool = Math.abs(currentTool) % 4;
     if (thisTool === 0) {
@@ -123,7 +123,7 @@ renderCanvas.addEventListener("mousedown", function (e) {
                 }
             }
         }
-    }*/
+    }
 
 })
 
@@ -249,8 +249,7 @@ class Sand {
         this.particle = particle;
     }
     async update() {
-        await sleep()
-
+        await sleep(1)
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
             this.particle.move(0, 1)
             return
@@ -330,12 +329,12 @@ class Player {
     update() {
         this.draw()
 
-        this.inventory[this.selectedItem].draw();
+        this.inventory[this.selectedItem]?.draw();
 
         this.vx = this.updateVelocity(this.vx, this.directionX, this.speedLossX, this.clampX, this.speedToSpeedX)
 
         this.vy > 0 ? this.vy -= this.speedLossY : 0;
-        if (this.onFloor === false && this.inventory[this.selectedItem]?.type?.type?.rope?.length > distance(-this.inventory[this.selectedItem]?.type?.type?.rope?.from?.x, -this.inventory[this.selectedItem]?.type?.type?.rope?.from?.y, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.x, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.y) && this.inventory[this.selectedItem]?.type?.type?.rope?.length !== 0) {
+        if (this.onFloor === false/* && this.inventory[this.selectedItem]?.type?.type?.rope?.length > distance(-this.inventory[this.selectedItem]?.type?.type?.rope?.from?.x, -this.inventory[this.selectedItem]?.type?.type?.rope?.from?.y, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.x, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.y) && this.inventory[this.selectedItem]?.type?.type?.rope?.length !== 0*/) {
             this.vy -= 0.2;
         }
 
@@ -619,28 +618,35 @@ async function createParticle(x, y, type, color, texture) {
             particles[x + "," + y].draw();
             let chunk = { x: Math.floor(x / chunkSize), y: Math.floor(y / chunkSize) }
             if (!chunksToUpdate.map(e => e.x).includes(chunk.x) && !chunksToUpdate.map(e => e.y).includes(chunk.y)) {
-                chunksToUpdate.push(chunk)
+                newChunksToUpdate.push(chunk)
             }
 
         } else {
-            createParticle(x, y - 1, type, color, texture)
+            //createParticle(x, y - 1, type, color, texture)
         }
     }
 
 }
 
+var newChunksToUpdate = [];
 var chunksToUpdate = []
 
 async function updateChunks() {
-    chunksToUpdate.forEach(async function (e, i) {
-        for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
-            for (let y = e.y * chunkSize - chunkSize, g = e.y * chunkSize + chunkSize + chunkSize; y < g; y++) {
+    newChunksToUpdate.forEach(e => {
+        if(!chunksToUpdate.includes(e)){
+            chunksToUpdate.push(e);
+        }
+    })
+    newChunksToUpdate = [];
+    await chunksToUpdate.forEach(async function (e, i) {
+        for (let g = e.y * chunkSize - chunkSize, y = e.y * chunkSize + chunkSize + chunkSize; y > g; y--) {
+            for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
                 particles[x + "," + y]?.type?.update();
             }
         }
         chunksToUpdate.splice(i, 1)
-        for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
-            for (let y = e.y * chunkSize - chunkSize, g = e.y * chunkSize + chunkSize + chunkSize; y < g; y++) {
+        for (let g = e.y * chunkSize - chunkSize, y = e.y * chunkSize + chunkSize + chunkSize; y > g; y--) {
+            for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
                 particles[x + "," + y]?.type?.update();
             }
         }
@@ -713,8 +719,8 @@ function distance(x1, y1, x2, y2) {
 
 var player = new Player(0, 0)
 
-player.inventory.push(new Item(new Tool(new GrapplingGun())))
-player.inventory[0].parent = player;
+//player.inventory.push(new Item(new Tool(new GrapplingGun())))
+//player.inventory[0].parent = player;
 
 async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
