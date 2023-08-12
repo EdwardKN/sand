@@ -191,15 +191,14 @@ class Particle {
             await sleep(1)
             self.type.update()
         } else {
-
-            for (let x = self.x - 2; x < self.x + 3; x++) {
-                for (let y = self.y - 2; y < self.y + 3; y++) {
+            for (let y = self.y + 3; y > self.y - 2; y--) {
+                for (let x = self.x + 2; x < self.x + 3; x++) {
                     //await sleep(1)
                     particles[(x) + "," + (y)]?.update();
                 }
             }
-            for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
-                for (let y = self.y - 2 - vy; y < self.y + 3 - vy; y++) {
+            for (let y = self.y + 3 - vy; y > self.y - 2 - vy; y--) {
+                for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
                     //await sleep(1)
                     particles[(x) + "," + (y)]?.update();
                 }
