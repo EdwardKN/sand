@@ -77,15 +77,15 @@ renderCanvas.addEventListener("mousedown", function (e) {
     let thisTool = Math.abs(currentTool) % 4;
     if (thisTool === 0) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "sand", "#c2b280")
+            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "sand", "#c2b280")
         }
     } else if (thisTool === 1) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "fluid", "#c2b280")
+            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "fluid", "#c2b280")
         }
     } else if (thisTool === 2) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + i % size - Math.floor(size / 2 + player.x), mouse.y + Math.floor(i / size) - Math.floor(size / 2 + player.y), "solid", "gray")
+            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "solid", "gray")
         }
     } else if (thisTool === 3) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
@@ -186,21 +186,23 @@ class Particle {
     }
 
     async updateNearby(vx, vy) {
+        await sleep(1)
         let self = this;
         if (self?.type instanceof Fluid && vy == 0) {
-            await sleep(1)
             self.type.update()
         } else {
-            for (let y = self.y + 3; y > self.y - 2; y--) {
-                for (let x = self.x + 2; x < self.x + 3; x++) {
-                    //await sleep(1)
-                    particles[(x) + "," + (y)]?.update();
+            for (let y = self.y + 4; y >= self.y - 3; y--) {
+                for (let x = self.x + 3; x < self.x + 4; x++) {
+                    if(!updateQueue.includes(particles[(x) + "," + (y)])){
+                        updateQueue.push(particles[(x) + "," + (y)])
+                    }
                 }
             }
-            for (let y = self.y + 3 - vy; y > self.y - 2 - vy; y--) {
-                for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
-                    //await sleep(1)
-                    particles[(x) + "," + (y)]?.update();
+            for (let y = self.y + 4 - vy; y >= self.y - 3 - vy; y--) {
+                for (let x = self.x - 3 - vx; x < self.x + 4 - vx; x++) {
+                    if(!updateQueue.includes(particles[(x) + "," + (y)])){
+                        updateQueue.push(particles[(x) + "," + (y)])
+                    }                
                 }
             }
         }
@@ -238,12 +240,20 @@ class Particle {
     }
 };
 
+var updateQueue = [];
+async function updateNextInQueue(){
+    updateQueue.forEach(e => {
+        e?.update();
+        updateQueue.shift();
+    })
+
+}
+
 class Sand {
     constructor(particle) {
         this.particle = particle;
     }
     async update() {
-        await sleep(1)
 
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
             this.particle.move(0, 1)
@@ -272,7 +282,6 @@ class Fluid {
         this.particle = particle;
     }
     async update() {
-        await sleep(1)
         if (particles[this.particle.x + "," + (this.particle.y - 1)]) {
             if (particles[this.particle.x + "," + (this.particle.y - 1)].type instanceof Sand) {
                 let random = Math.random() > 0.5 ? -1 : 1
@@ -484,7 +493,7 @@ function createParticle(x, y, type, color, texture) {
                 particles[x + "," + y].type = new Fluid(particles[x + "," + y])
             }
             particles[x + "," + y].draw();
-            particles[x + "," + y].update();
+            particles[x + "," + y].updateNearby();
 
         } else {
             createParticle(x, y - 1, type, color, texture)
@@ -527,6 +536,7 @@ async function update() {
     renderC.imageSmoothingEnabled = false;
 
     c.clearRect(0, 0, canvas.width, canvas.height);
+    await updateNextInQueue();
 
 
     render();
@@ -537,6 +547,9 @@ async function update() {
 
     renderC.fillStyle = "gray"
     renderC.fillText(fps, 100, 100)
+
+    renderC.fillStyle = "gray"
+    renderC.fillText(updateQueue.length, 100, 150)
 }
 
 function getPerlinNoise(x, y, perlinSeed, resolution) {
@@ -581,7 +594,6 @@ async function init() {
     await preRender(images);
     update();
     testGenerate()
-
 }
 
 window.onload = init;
