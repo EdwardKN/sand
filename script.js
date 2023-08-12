@@ -165,15 +165,15 @@ class Particle {
         if (self?.type instanceof Fluid && vy == 0) {
             self.type.update()
         } else {
-            for (let y = self.y + 3; y >= self.y - 2; y--) {
-                for (let x = self.x + 2; x < self.x + 3; x++) {
+            for (let x = self.x - 2; x < self.x + 3; x++) {
+                for (let y = self.y - 2; y < self.y + 3; y++) {
                     if(!updateQueue.includes(particles[(x) + "," + (y)])){
                         updateQueue.push(particles[(x) + "," + (y)])
-                    }
+                    }        
                 }
             }
-            for (let y = self.y + 3 - vy; y >= self.y - 2 - vy; y--) {
-                for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
+            for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
+                for (let y = self.y - 2 - vy; y < self.y + 3 - vy; y++) {
                     if(!updateQueue.includes(particles[(x) + "," + (y)])){
                         updateQueue.push(particles[(x) + "," + (y)])
                     }                
@@ -202,7 +202,7 @@ class Particle {
         particles[(this.x + vx) + "," + (this.y + vy)] = this;
 
         particles[this.x + "," + this.y] = tmp;
-
+        
         if (tmp) {
             tmp.updateNearby(0, 0);
         }
@@ -210,7 +210,7 @@ class Particle {
         this.x += vx;
         this.draw();
         let self = this;
-        self.updateNearby(vx, vy)
+        self.updateNearby(-vx, -vy)
     }
 };
 
@@ -227,12 +227,12 @@ class Sand {
         this.particle = particle;
     }
     async update() {
-        let random = Math.random() > 0.5 ? -1 : 1
 
         if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
             this.particle.move(0, 1)
             return
         } else {
+            let random = Math.random() > 0.5 ? -1 : 1
 
             if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] == undefined) {
                 this.particle.move(random, 0)
