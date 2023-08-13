@@ -174,13 +174,20 @@ class Particle {
         if (self?.type instanceof Fluid && vy == 0) {
             self.type.update()
         } else {
-            for (let x = self.x - vx - 1; x < self.x + 3; x++) {
-                for (let y = self.y - vy - 1; y < self.y + 3; y++) {
+            for (let x = self.x - 2; x < self.x + 3; x++) {
+                for (let y = self.y - 2; y < self.y + 3; y++) {
                     if(!updateQueue.includes(particles[(x) + "," + (y)])){
                         updateQueue.push(particles[(x) + "," + (y)]);
                     };
-                };
-            };
+                }
+            }
+            for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
+                for (let y = self.y - 2 - vy; y < self.y + 3 - vy; y++) {
+                    if(!updateQueue.includes(particles[(x) + "," + (y)])){
+                        updateQueue.push(particles[(x) + "," + (y)]);
+                    };
+                }
+            }
         };
     };
     checkIfInAir(){
@@ -222,7 +229,7 @@ class Particle {
         this.draw();
         let self = this;
         self.updateNearby(vx, vy);
-        self.checkIfInAir();
+        //self.checkIfInAir();
     }
 };
 
