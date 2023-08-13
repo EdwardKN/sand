@@ -122,6 +122,10 @@ class Particle {
         this.y = y;
         this.color = color;
         this.texture = texture;
+        this.velocity = {
+            x:1,
+            y:1
+        };
 
         if (this.color === undefined) {
             this.color = "black"
@@ -160,30 +164,28 @@ class Particle {
     }
 
     async updateNearby(vx, vy) {
-        await sleep(1)
         let self = this;
+        if(vx == undefined){
+            vx = 0;
+        }
+        if(vy == undefined){
+            vy = 0;
+        }
         if (self?.type instanceof Fluid && vy == 0) {
             self.type.update()
         } else {
-            for (let x = self.x - 2; x < self.x + 3; x++) {
-                for (let y = self.y - 2; y < self.y + 3; y++) {
+            for (let x = self.x - 5 - vx; x < self.x + 4; x++) {
+                for (let y = self.y - 5 - vy; y < self.y + 4; y++) {
                     if(!updateQueue.includes(particles[(x) + "," + (y)])){
-                        updateQueue.push(particles[(x) + "," + (y)])
-                    }        
-                }
-            }
-            for (let x = self.x - 2 - vx; x < self.x + 3 - vx; x++) {
-                for (let y = self.y - 2 - vy; y < self.y + 3 - vy; y++) {
-                    if(!updateQueue.includes(particles[(x) + "," + (y)])){
-                        updateQueue.push(particles[(x) + "," + (y)])
-                    }                
-                }
-            }
-        }
-    }
+                        updateQueue.push(particles[(x) + "," + (y)]);
+                    };
+                };
+            };
+        };
+    };
 
     async move(vx, vy) {
-        let tmp = particles[(this.x + vx) + "," + (this.y + vy)]
+        let tmp = particles[(this.x + vx) + "," + (this.y + vy)];
         if (tmp) {
             if (tmp.type == undefined) {
                 return;
@@ -191,12 +193,12 @@ class Particle {
                 tmp.x -= vx;
                 tmp.y -= vy;
                 tmp.draw();
-            }
+            };
         } else {
-            let tmpX = this.x >= 0 ? this.x % chunkSize : (chunkSize + this.x % (chunkSize))
-            let tmpY = this.y >= 0 ? this.y % chunkSize : (chunkSize + this.y % (chunkSize))
-            tmpX = tmpX == chunkSize ? 0 : tmpX
-            tmpY = tmpY == chunkSize ? 0 : tmpY
+            let tmpX = this.x >= 0 ? this.x % chunkSize : (chunkSize + this.x % (chunkSize));
+            let tmpY = this.y >= 0 ? this.y % chunkSize : (chunkSize + this.y % (chunkSize));
+            tmpX = tmpX == chunkSize ? 0 : tmpX;
+            tmpY = tmpY == chunkSize ? 0 : tmpY;
             chunks[Math.floor(this.x / chunkSize) + "," + Math.floor(this.y / chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
         }
         particles[(this.x + vx) + "," + (this.y + vy)] = this;
@@ -205,21 +207,23 @@ class Particle {
         
         if (tmp) {
             tmp.updateNearby(0, 0);
-        }
+        };
         this.y += vy;
         this.x += vx;
         this.draw();
         let self = this;
-        self.updateNearby(-vx, -vy)
+        self.updateNearby(vx, vy);
     }
 };
 
 var updateQueue = [];
 async function updateNextInQueue(){
+    let tmp = updateQueue.length;
     await updateQueue.forEach(async function(e) {
         await e?.update();
         updateQueue.shift();
     })
+    return tmp;
 }
 
 class Sand {
@@ -227,60 +231,71 @@ class Sand {
         this.particle = particle;
     }
     async update() {
-
-        if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined || particles[this.particle.x + "," + (this.particle.y + 1)].type instanceof Fluid) {
-            this.particle.move(0, 1)
-            return
-        } else {
-            let random = Math.random() > 0.5 ? -1 : 1
-
-            if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)] == undefined) {
-                this.particle.move(random, 0)
-            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y + 1)] == undefined) {
-                this.particle.move(-random, 0)
+        await sleep(1)
+        let maxVelocityY = 0;
+        for(let i = 1; i < this.particle.velocity.y+1; i++){
+            if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined || particles[this.particle.x + "," + (this.particle.y + i)].type instanceof Fluid) {
+                maxVelocityY = i;
             }
-            if (particles[(this.particle.x + random) + "," + (this.particle.y + 1)]?.type instanceof Fluid) {
-                this.particle.move(random, 0)
-            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y + 1)]?.type instanceof Fluid) {
-                this.particle.move(-random, 0)
+        }
+        if(maxVelocityY !== 0){
+            this.particle.move(0, maxVelocityY);
+            this.particle.velocity.y++;
+        }else{
+            let maxVelocityX = 0;
+            this.particle.velocity.y = 1;
+            for(let i = 1; i < this.particle.velocity.x+1; i++){
+                if (particles[(this.particle.x + i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
+                    maxVelocityX = i;
+                }else if (particles[(this.particle.x + -i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + -i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
+                    maxVelocityX = -i;
+                }else{
+                    this.particle.velocity.x = 1;
+                }
+            }
+            if(maxVelocityX !== 0){
+                this.particle.move(maxVelocityX, 0);
+                this.particle.velocity.x++;
             }
 
         }
-    }
-
-}
+    };
+};
 
 class Fluid {
     constructor(particle) {
         this.particle = particle;
-    }
+    };
     async update() {
-        if (particles[this.particle.x + "," + (this.particle.y - 1)]) {
-            if (particles[this.particle.x + "," + (this.particle.y - 1)].type instanceof Sand) {
-                let random = Math.random() > 0.5 ? -1 : 1
-
-                if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
-                    this.particle.move(random, 0)
-                } else if (particles[(this.particle.x + -random) + "," + (this.particle.y)] == undefined) {
-                    this.particle.move(-random, 0)
+        await sleep(100)
+        let maxVelocityY = 0;
+        for(let i = 1; i < this.particle.velocity.y+1; i++){
+            if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined) {
+                maxVelocityY = i;
+            }
+        }
+        if(maxVelocityY !== 0){
+            this.particle.move(0, maxVelocityY);
+            this.particle.velocity.y++;
+        }else{
+            let maxVelocityX = 0;
+            this.particle.velocity.y = 1;
+            for(let i = 1; i < this.particle.velocity.x+1; i++){
+                if (particles[(this.particle.x + i) + "," + (this.particle.y)] == undefined) {
+                    maxVelocityX = i;
+                }else if (particles[(this.particle.x + -i) + "," + (this.particle.y)] == undefined) {
+                    maxVelocityX = -i;
+                }else{
+                    this.particle.velocity.x = 1;
                 }
-                return
             }
-        }
-        if (particles[this.particle.x + "," + (this.particle.y + 1)] === undefined) {
-            this.particle.move(0, 1)
-            return;
-
-        } else {
-            let random = Math.random() > 0.5 ? -1 : 1
-
-            if (particles[(this.particle.x + random) + "," + (this.particle.y)] == undefined) {
-                this.particle.move(random, 0)
-            } else if (particles[(this.particle.x + -random) + "," + (this.particle.y)] == undefined) {
-                this.particle.move(-random, 0)
+            if(maxVelocityX !== 0){
+                this.particle.move(maxVelocityX, 0);
+                this.particle.velocity.x++;
             }
+
         }
-    }
+    };
 }
 
 class Player {
@@ -509,7 +524,8 @@ async function update() {
     renderC.imageSmoothingEnabled = false;
 
     c.clearRect(0, 0, canvas.width, canvas.height);
-    await updateNextInQueue();
+    let updateQueueLength = await updateNextInQueue();
+    
 
     if(mouse.down){
         buttonPress();
@@ -526,7 +542,7 @@ async function update() {
     renderC.fillText(fps, 100, 100)
 
     renderC.fillStyle = "gray"
-    renderC.fillText(updateQueue.length, 100, 150)
+    renderC.fillText(updateQueueLength, 100, 150)
 }
 
 function getPerlinNoise(x, y, perlinSeed, resolution) {
@@ -563,7 +579,7 @@ function refreshLoop() {
 }
 
 function buttonPress(){
-    let size = 10;
+    let size = 5;
     let thisTool = Math.abs(currentTool) % 4;
     if (thisTool === 0) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
