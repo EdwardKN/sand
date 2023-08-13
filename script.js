@@ -13,6 +13,8 @@ document.body.appendChild(renderCanvas)
 
 var currentTool = 0;
 
+var mouseSize = 5;
+
 var scale;
 
 const chunkSize = 32;
@@ -253,6 +255,8 @@ class Sand {
         for(let i = 1; i < this.particle.velocity.y+1; i++){
             if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined || particles[this.particle.x + "," + (this.particle.y + i)].type instanceof Fluid) {
                 maxVelocityY = i;
+            }else{
+                i = undefined;
             }
         }
         if(maxVelocityY !== 0){
@@ -262,11 +266,13 @@ class Sand {
             let maxVelocityX = 0;
             this.particle.velocity.y = 1;
             for(let i = 1; i < this.particle.velocity.x+1; i++){
-                if (particles[(this.particle.x + -i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + -i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
-                    maxVelocityX = -i;
-                }else if (particles[(this.particle.x + i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
-                    maxVelocityX = i;
+                let random = Math.random() > 0.5 ? -1 : 1
+                if (particles[(this.particle.x + -i*random) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + -i*random) + "," + (this.particle.y + 1)].type instanceof Fluid) {
+                    maxVelocityX = -i*random;
+                }else if (particles[(this.particle.x + i*random) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + i*random) + "," + (this.particle.y + 1)].type instanceof Fluid) {
+                    maxVelocityX = i*random;
                 }else{
+                    i = undefined;
                     this.particle.velocity.x = 1;
                 }
             }
@@ -289,6 +295,8 @@ class Fluid {
         for(let i = 1; i < this.particle.velocity.y+1; i++){
             if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined) {
                 maxVelocityY = i;
+            }else{
+                i = undefined;
             }
         }
         if(maxVelocityY !== 0){
@@ -298,11 +306,13 @@ class Fluid {
             let maxVelocityX = 0;
             this.particle.velocity.y = 1;
             for(let i = 1; i < this.particle.velocity.x+1; i++){
-                if (particles[(this.particle.x + i) + "," + (this.particle.y)] == undefined) {
-                    maxVelocityX = i;
-                }else if (particles[(this.particle.x + -i) + "," + (this.particle.y)] == undefined) {
-                    maxVelocityX = -i;
+                let random = Math.random() > 0.5 ? -1 : 1
+                if (particles[(this.particle.x + -i*random) + "," + (this.particle.y)] == undefined) {
+                    maxVelocityX = -i*random;
+                }else if (particles[(this.particle.x + i*random) + "," + (this.particle.y)] == undefined) {
+                    maxVelocityX = i*random;
                 }else{
+                    i = undefined;
                     this.particle.velocity.x = 1;
                 }
             }
@@ -551,6 +561,10 @@ async function update() {
 
     render();
 
+    c.lineWidth = 1;
+    c.strokeStyle = "black";
+    c.strokeRect(mouse.x- mouseSize/2,mouse.y - mouseSize/2,mouseSize,mouseSize)
+
     renderC.fillStyle = "white"
     renderC.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
     renderC.drawImage(canvas, 0, 0, renderCanvas.width, renderCanvas.height)
@@ -596,7 +610,7 @@ function refreshLoop() {
 }
 
 function buttonPress(){
-    let size = 5;
+    let size = mouseSize;
     let thisTool = Math.abs(currentTool) % 4;
     if (thisTool === 0) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
