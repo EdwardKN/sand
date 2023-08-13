@@ -17,7 +17,7 @@ var currentTool = 0;
 
 var scale;
 
-const chunkSize = 32;
+const chunkSize = 24;
 
 var mouse = {
     x: 1000,
@@ -79,8 +79,8 @@ renderCanvas.addEventListener("mousemove", e => {
         x: Math.floor(e.offsetX / scale),
         y: Math.floor(e.offsetY / scale)
     }
-    camera.x = (canvas.width / 2 - mouse.x) / 2
-    camera.y = (canvas.height / 2 - mouse.y) / 2
+    //camera.x = (canvas.width / 2 - mouse.x) / 2
+    //camera.y = (canvas.height / 2 - mouse.y) / 2
 })
 
 renderCanvas.addEventListener("mousedown", function (e) {
@@ -88,9 +88,10 @@ renderCanvas.addEventListener("mousedown", function (e) {
         x: Math.floor(e.offsetX / scale),
         y: Math.floor(e.offsetY / scale)
     }
-    player.inventory[player.selectedItem]?.use();
     /*
-    let size = 10;
+    player.inventory[player.selectedItem]?.use();
+    */
+    let size = 3;
     let thisTool = Math.abs(currentTool) % 4;
     if (thisTool === 0) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
@@ -123,7 +124,7 @@ renderCanvas.addEventListener("mousedown", function (e) {
                 }
             }
         }
-    }*/
+    }
 
 })
 
@@ -335,7 +336,7 @@ class Player {
         this.vx = this.updateVelocity(this.vx, this.directionX, this.speedLossX, this.clampX, this.speedToSpeedX)
 
         this.vy > 0 ? this.vy -= this.speedLossY : 0;
-        if (this.onFloor === false && this.inventory[this.selectedItem]?.type?.type?.rope?.length > distance(-this.inventory[this.selectedItem]?.type?.type?.rope?.from?.x, -this.inventory[this.selectedItem]?.type?.type?.rope?.from?.y, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.x, this.inventory[this.selectedItem]?.type?.type?.rope?.to?.y) && this.inventory[this.selectedItem]?.type?.type?.rope?.length !== 0) {
+        if (this.onFloor === false) {
             this.vy -= 0.2;
         }
 
@@ -632,12 +633,14 @@ async function createParticle(x, y, type, color, texture) {
 var chunksToUpdate = []
 
 async function updateChunks() {
+    console.log(chunksToUpdate.length)
     chunksToUpdate.forEach(async function (e, i) {
-        for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
-            for (let y = e.y * chunkSize - chunkSize, g = e.y * chunkSize + chunkSize + chunkSize; y < g; y++) {
-                particles[x + "," + y]?.type?.update();
+            for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
+                for (let y = e.y * chunkSize - chunkSize, g = e.y * chunkSize + chunkSize + chunkSize; y < g; y++) {
+                    particles[x + "," + y]?.type?.update();
+                }
             }
-        }
+        
         chunksToUpdate.splice(i, 1)
         for (let x = e.x * chunkSize - chunkSize, n = e.x * chunkSize + chunkSize + chunkSize; x < n; x++) {
             for (let y = e.y * chunkSize - chunkSize, g = e.y * chunkSize + chunkSize + chunkSize; y < g; y++) {
