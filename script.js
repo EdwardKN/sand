@@ -3,8 +3,8 @@ var c = canvas.getContext("2d");
 canvas.style.zIndex = "1"
 document.body.appendChild(canvas)
 
-canvas.width = 160;
-canvas.height = 90;
+canvas.width = 160*2;
+canvas.height = 90*2;
 
 var renderCanvas = document.createElement("canvas");
 var renderC = renderCanvas.getContext("2d");
@@ -174,8 +174,8 @@ class Particle {
         if (self?.type instanceof Fluid && vy == 0) {
             self.type.update()
         } else {
-            for (let x = self.x - 5 - vx; x < self.x + 4; x++) {
-                for (let y = self.y - 5 - vy; y < self.y + 4; y++) {
+            for (let x = self.x - vx - 1; x < self.x + 3; x++) {
+                for (let y = self.y - vy - 1; y < self.y + 3; y++) {
                     if(!updateQueue.includes(particles[(x) + "," + (y)])){
                         updateQueue.push(particles[(x) + "," + (y)]);
                     };
@@ -183,6 +183,15 @@ class Particle {
             };
         };
     };
+    checkIfInAir(){
+        if(this.type instanceof Sand || this.type instanceof Fluid){
+            if(particles[(this.x) + "," + (this.y+1)]?.type == undefined){
+                if(!updateQueue.includes(particles[(this.x) + "," + (this.y)])){
+                    updateQueue.push(particles[(this.x) + "," + (this.y)]);
+                };
+            }
+        }
+    }
 
     async move(vx, vy) {
         let tmp = particles[(this.x + vx) + "," + (this.y + vy)];
@@ -207,12 +216,13 @@ class Particle {
         
         if (tmp) {
             tmp.updateNearby(0, 0);
-        };
+        }
         this.y += vy;
         this.x += vx;
         this.draw();
         let self = this;
         self.updateNearby(vx, vy);
+        self.checkIfInAir();
     }
 };
 
@@ -231,7 +241,7 @@ class Sand {
         this.particle = particle;
     }
     async update() {
-        await sleep(1)
+        await sleep()
         let maxVelocityY = 0;
         for(let i = 1; i < this.particle.velocity.y+1; i++){
             if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined || particles[this.particle.x + "," + (this.particle.y + i)].type instanceof Fluid) {
@@ -245,10 +255,10 @@ class Sand {
             let maxVelocityX = 0;
             this.particle.velocity.y = 1;
             for(let i = 1; i < this.particle.velocity.x+1; i++){
-                if (particles[(this.particle.x + i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
-                    maxVelocityX = i;
-                }else if (particles[(this.particle.x + -i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + -i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
+                if (particles[(this.particle.x + -i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + -i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
                     maxVelocityX = -i;
+                }else if (particles[(this.particle.x + i) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + i) + "," + (this.particle.y + 1)].type instanceof Fluid) {
+                    maxVelocityX = i;
                 }else{
                     this.particle.velocity.x = 1;
                 }
@@ -267,7 +277,7 @@ class Fluid {
         this.particle = particle;
     };
     async update() {
-        await sleep(100)
+        await sleep()
         let maxVelocityY = 0;
         for(let i = 1; i < this.particle.velocity.y+1; i++){
             if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined) {
@@ -511,8 +521,8 @@ async function render() {
 function testGenerate() {
     for (let x = -500; x < 500; x++) {
         for (let y = -500; y < 500; y++) {
-            let perlin = getPerlinNoise(x, y, 20, 100)
-            if (perlin > 0.5 || Math.abs(x) === 499 || Math.abs(y) === 499) {
+            let perlin = 0//getPerlinNoise(x, y, 20, 100)
+            if (perlin > 0.5 || Math.abs(x) > 450 || Math.abs(y) > 450) {
                 createParticle(x, y, "solid", "brown")
             }
         }
