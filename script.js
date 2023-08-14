@@ -27,7 +27,6 @@ var mouse = {
 
 let typetocreate = "sand"
 
-
 function fixCanvas() {
     if (window.innerWidth * 9 > window.innerHeight * 16) {
         renderCanvas.width = window.innerHeight * 16 / 9;
@@ -119,11 +118,12 @@ async function drawImageFromSpriteSheet(image, x, y, w, h, cropX, cropY, cropW, 
 }
 
 class Particle {
-    constructor(x, y, color, texture) {
+    constructor(x, y, color, texture,spreadSpeed) {
         this.x = x;
         this.y = y;
         this.color = color;
         this.texture = texture;
+        this.spreadSpeed = spreadSpeed;
         this.velocity = {
             x:1,
             y:1
@@ -161,10 +161,6 @@ class Particle {
 
     }
 
-    async update() {
-        this.type?.update();
-    }
-
     async updateNearby(vx, vy) {
         let self = this;
         if(vx == undefined){
@@ -173,8 +169,8 @@ class Particle {
         if(vy == undefined){
             vy = 0;
         }
-        if (self?.type instanceof Fluid && vy == 0) {
-            self.type.update()
+        if (self instanceof Fluid && vy == 0) {
+            self.update()
         } else {
             for (let x = self.x - 2; x < self.x + 3; x++) {
                 for (let y = self.y - 2; y < self.y + 3; y++) {
@@ -193,8 +189,8 @@ class Particle {
         };
     };
     checkIfInAir(){
-        if(this.type instanceof Sand || this.type instanceof Fluid){
-            if(particles[(this.x) + "," + (this.y+1)]?.type == undefined){
+        if(this instanceof Sand || this instanceof Fluid){
+            if(particles[(this.x) + "," + (this.y+1)] == undefined){
                 if(!updateQueue.includes(particles[(this.x) + "," + (this.y)])){
                     updateQueue.push(particles[(this.x) + "," + (this.y)]);
                 };
@@ -205,7 +201,7 @@ class Particle {
     async move(vx, vy) {
         let tmp = particles[(this.x + vx) + "," + (this.y + vy)];
         if (tmp) {
-            if (tmp.type == undefined) {
+            if (tmp instanceof Solid) {
                 return;
             } else {
                 tmp.x -= vx;
@@ -223,14 +219,14 @@ class Particle {
 
         particles[this.x + "," + this.y] = tmp;
         
-        if (tmp) {
-            tmp.updateNearby(0, 0);
-        }
+        
         this.y += vy;
         this.x += vx;
         this.draw();
-        let self = this;
-        self.updateNearby(vx, vy);
+        if (tmp) {
+            tmp.updateNearby(0, 0);
+        }
+        this.updateNearby(vx, vy);
         //self.checkIfInAir();
     }
 };
@@ -239,21 +235,66 @@ var updateQueue = [];
 async function updateNextInQueue(){
     let tmp = updateQueue.length;
     await updateQueue.forEach(async function(e) {
-        await e?.update();
-        updateQueue.shift();
+        if(e !== undefined){
+            await e.update();
+            updateQueue.shift();
+        }
     })
     return tmp;
 }
 
-class Sand {
+class Solid extends Particle {
+    async update(){
+
+    }
+}
+
+class MoveableSolid extends Particle {
+    async update() {
+        await sleep()
+        let maxVelocityY = 0;
+        for(let i = 1; i < this.velocity.y+1; i++){
+            if (particles[this.x + "," + (this.y + i)] === undefined || particles[this.x + "," + (this.y + i)] instanceof Fluid) {
+                maxVelocityY = 1;
+            }else{
+                i = undefined;
+            }
+        }
+        if(maxVelocityY !== 0){
+            this.move(0, maxVelocityY);
+            this.velocity.y++;
+        }else{
+            let maxVelocityX = 0;
+            this.velocity.y = 1;
+
+            for(let i = 1; i < this.spreadSpeed+1; i++){
+                let random = Math.random() > 0.5 ? -1 : 1
+                if (particles[(this.x + -i*random) + "," + (this.y + 1)] == undefined || particles[(this.x + -i*random) + "," + (this.y + 1)] instanceof Fluid) {
+                    maxVelocityX = -i*random;
+                }else if (particles[(this.x + i*random) + "," + (this.y + 1)] == undefined || particles[(this.x + i*random) + "," + (this.y + 1)] instanceof Fluid) {
+                    maxVelocityX = i*random;
+                }else{
+                    i = undefined;
+                }
+            }
+            if(maxVelocityX !== 0){
+                this.move(maxVelocityX, 0);
+            }
+
+        }
+    };
+};
+
+class Fluid extends Particle{
     constructor(particle) {
         this.particle = particle;
-    }
+        this.lastDirection = 1;
+    };
     async update() {
         await sleep()
         let maxVelocityY = 0;
         for(let i = 1; i < this.particle.velocity.y+1; i++){
-            if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined || particles[this.particle.x + "," + (this.particle.y + i)].type instanceof Fluid) {
+            if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined) {
                 maxVelocityY = i;
             }else{
                 i = undefined;
@@ -265,27 +306,25 @@ class Sand {
         }else{
             let maxVelocityX = 0;
             this.particle.velocity.y = 1;
-            for(let i = 1; i < this.particle.velocity.x+1; i++){
-                let random = Math.random() > 0.5 ? -1 : 1
-                if (particles[(this.particle.x + -i*random) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + -i*random) + "," + (this.particle.y + 1)].type instanceof Fluid) {
-                    maxVelocityX = -i*random;
-                }else if (particles[(this.particle.x + i*random) + "," + (this.particle.y + 1)] == undefined || particles[(this.particle.x + i*random) + "," + (this.particle.y + 1)].type instanceof Fluid) {
+            for(let i = 1; i < this.particle.spreadSpeed+1; i++){
+                let random = this.lastDirection
+                if (particles[(this.particle.x + i*random) + "," + (this.particle.y)] == undefined) {
                     maxVelocityX = i*random;
+                }else if (particles[(this.particle.x + -i*random) + "," + (this.particle.y)] == undefined) {
+                    maxVelocityX = -i*random;
                 }else{
-                    i = undefined;
-                    this.particle.velocity.x = 1;
+                    this.lastDirection *= -1;
+                    i = undefined
                 }
             }
             if(maxVelocityX !== 0){
                 this.particle.move(maxVelocityX, 0);
-                this.particle.velocity.x++;
             }
 
         }
     };
-};
-
-class Fluid {
+}
+class Gas extends Particle{
     constructor(particle) {
         this.particle = particle;
     };
@@ -293,8 +332,8 @@ class Fluid {
         await sleep()
         let maxVelocityY = 0;
         for(let i = 1; i < this.particle.velocity.y+1; i++){
-            if (particles[this.particle.x + "," + (this.particle.y + i)] === undefined) {
-                maxVelocityY = i;
+            if (particles[this.particle.x + "," + (this.particle.y - i)] === undefined) {
+                maxVelocityY = -i;
             }else{
                 i = undefined;
             }
@@ -372,7 +411,8 @@ class Player {
         let tmp = false;
         for (let i = 0; i < this.w; i++) {
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2))]) {
-                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2))].type instanceof Fluid) == false) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2))] instanceof Fluid) == false
+                ) {
                     tmp = true;
                 }
             }
@@ -384,7 +424,7 @@ class Player {
             }
             for (let i = 0; i < this.w; i++) {
                 if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2) - 1)]) {
-                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2) - 1)].type instanceof Fluid) == false) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 + this.h / 2) - 1)] instanceof Fluid) == false) {
                         this.y++;
                     }
                 }
@@ -394,7 +434,7 @@ class Player {
         for (let i = 0; i < this.w; i++) {
 
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2 - 1))]) {
-                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2 - 1))].type instanceof Fluid) == false) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2 - 1))] instanceof Fluid) == false) {
                     tmp2 = true;
                 }
             }
@@ -405,7 +445,7 @@ class Player {
             }
             for (let i = 0; i < this.w; i++) {
                 if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2))]) {
-                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2))].type instanceof Fluid) == false) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2) + i)) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2))] instanceof Fluid) == false) {
                         this.y--;
                     }
                 }
@@ -414,7 +454,7 @@ class Player {
         let tmp3 = false;
         for (let i = 0; i < this.h; i++) {
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
-                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)] instanceof Fluid) == false) {
                     tmp3 = true;
                 }
             }
@@ -425,7 +465,7 @@ class Player {
             }
             for (let i = 0; i < this.w; i++) {
                 if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
-                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 - this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)] instanceof Fluid) == false) {
                         this.x--;
                     }
                 }
@@ -434,7 +474,7 @@ class Player {
         let tmp4 = false;
         for (let i = 0; i < this.h; i++) {
             if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
-                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
+                if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)] instanceof Fluid) == false) {
                     tmp4 = true;
                 }
             }
@@ -445,7 +485,7 @@ class Player {
             }
             for (let i = 0; i < this.w; i++) {
                 if (particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)]) {
-                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)].type instanceof Fluid) == false) {
+                    if ((particles[(Math.floor(-Math.floor(this.x) + Math.floor(canvas.width / 2 + this.w / 2 - 1))) + "," + (-Math.floor(this.y) + Math.floor(canvas.height / 2 - this.h / 2) + i)] instanceof Fluid) == false) {
                         this.x++;
                     }
                 }
@@ -492,23 +532,27 @@ var particles = []
 
 var chunks = [];
 
-function createParticle(x, y, type, color, texture) {
+async function createParticle(x, y, type, color, spreadSpeed, texture) {
     if (type == "solid") {
-        particles[x + "," + y] = new Particle(x, y, color, texture)
+        particles[x + "," + y] = new Solid(x, y, color, texture,spreadSpeed)
         particles[x + "," + y].draw();
     } else {
         if (particles[x + "," + y] === undefined) {
-            particles[x + "," + y] = new Particle(x, y, color, texture)
             if (type == "sand") {
-                particles[x + "," + y].type = new Sand(particles[x + "," + y])
+                particles[x + "," + y] = new MoveableSolid(x, y, color, texture,spreadSpeed)
             }
             if (type == "fluid") {
-                particles[x + "," + y].color = "#2389da"
+                particles[x + "," + y].color = color
 
-                particles[x + "," + y].type = new Fluid(particles[x + "," + y])
+                particles[x + "," + y] = new Fluid(particles[x + "," + y])
+            }
+            if (type == "gas") {
+                particles[x + "," + y].color = color
+
+                particles[x + "," + y] = new Gas(particles[x + "," + y])
             }
             particles[x + "," + y].draw();
-            particles[x + "," + y].updateNearby();
+            await particles[x + "," + y].updateNearby();
 
         } else {
             //createParticle(x, y - 1, type, color, texture)
@@ -521,7 +565,7 @@ function createParticle(x, y, type, color, texture) {
 async function render() {
     for (let x = 0 - Math.floor(player.x) - canvas.width / 2, n = canvas.width - player.x + canvas.width; x < n; x++) {
         for (let y = 0 - Math.floor(player.y) - canvas.height / 2, g = canvas.height - player.y + canvas.height; y < g; y++) {
-            //particles[x + "," + y]?.type?.update();
+            //particles[x + "," + y]?.update();
         }
     }
     for (let x = -Math.round(player.x / chunkSize) - 1, n = Math.round(canvas.width / chunkSize) - Math.round(player.x / chunkSize) + 1; x < n; x++) {
@@ -536,10 +580,10 @@ async function render() {
 }
 
 function testGenerate() {
-    for (let x = -500; x < 500; x++) {
-        for (let y = -500; y < 500; y++) {
+    for (let x = -150; x < 150; x++) {
+        for (let y = -150; y < 150; y++) {
             let perlin = 0//getPerlinNoise(x, y, 20, 100)
-            if (perlin > 0.5 || Math.abs(x) > 450 || Math.abs(y) > 450) {
+            if (perlin > 0.5 || Math.abs(x) > 100 || Math.abs(y) > 100) {
                 createParticle(x, y, "solid", "brown")
             }
         }
@@ -555,7 +599,7 @@ async function update() {
     
 
     if(mouse.down){
-        buttonPress();
+        await buttonPress();
     }
 
 
@@ -587,7 +631,7 @@ function getPerlinNoise(x, y, perlinSeed, resolution) {
 
 }
 
-var player = new Player(0, 0)
+var player = new Player(200, 100)
 
 async function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
@@ -609,20 +653,26 @@ function refreshLoop() {
     });
 }
 
-function buttonPress(){
+
+
+async function buttonPress(){
     let size = mouseSize;
-    let thisTool = Math.abs(currentTool) % 4;
+    let thisTool = Math.abs(currentTool) % 5;
     if (thisTool === 0) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "sand", "#c2b280")
+            await createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "sand", "#c2b280",1)
         }
     } else if (thisTool === 1) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "fluid", "#c2b280")
+            await createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "fluid", "blue",5)
         }
     } else if (thisTool === 2) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
-            createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "solid", "gray")
+            await createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "solid", "gray")
+        }
+    } else if (thisTool === 3) {
+        for (let i = 0; i < Math.pow(size, 2); i++) {
+            await createParticle(mouse.x + Math.floor(i / size) - Math.floor(size / 2 + player.x), mouse.y + i % size - Math.floor(size / 2 + player.y), "gas", "lightgray")
         }
     } else if (thisTool === 3) {
         for (let i = 0; i < Math.pow(size, 2); i++) {
@@ -636,7 +686,7 @@ function buttonPress(){
             chunks[Math.floor(x / chunkSize) + "," + Math.floor(y / chunkSize)].context.clearRect(tmpX, tmpY, 1, 1);
             for (let x2 = x - 2; x2 < x + 2; x2++) {
                 for (let y2 = y - 2; y2 < y + 2; y2++) {
-                    particles[(x2) + "," + (y2)]?.type?.update();
+                    particles[(x2) + "," + (y2)]?.update();
                 }
             }
         }

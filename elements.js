@@ -1,0 +1,3 @@
+class Sand extends MoveableSolid{
+    
+}
